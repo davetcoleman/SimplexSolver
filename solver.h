@@ -1,20 +1,24 @@
 #include "utility.h"
 #include <limits>
 
+// Setup remainder of dictionary after it is loaded from file
+dictionary setup(dictionary s1);
+
 // Get the row index of the corresponding leaving vaiable
-int getLeavingVar(simplex s1, int entering_var_index);
+int getLeavingVar(dictionary s1, int entering_var_index);
 	
 // Get the row index of the next entering variable
-int getEnteringVar(simplex s1);
+int getEnteringVar(dictionary s1);
 	 
 // Check if problem is optimal
-bool isOptimal(simplex s1);
+bool isOptimal(dictionary s1);
 
 // Check if dictionaty is feasible
-bool isFeasible(simplex s1);
+bool isFeasible(dictionary s1);
 
 // Return the bound that the nonbasic variable is currently resting on, or "active'
-double getNonbasicVal(simplex s1, int index);
+double getNonbasicVal(dictionary s1, int index);
 
 // Do the actual pivot
-simplex pivot(simplex s1, int entering_var_index, int leaving_var_index);
+dictionary pivot(dictionary s1, int entering_var_index, int leaving_var_index);
+
