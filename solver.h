@@ -15,4 +15,6 @@ bool isFeasible(simplex s1);
 
 // Return the bound that the nonbasic variable is currently resting on, or "active'
 double getNonbasicVal(simplex s1, int index);
-	
+
+// Do the actual pivot
+simplex pivot(simplex s1, int entering_var_index, int leaving_var_index);

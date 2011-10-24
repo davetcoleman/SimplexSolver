@@ -39,7 +39,7 @@ int main(int argc, char** argv)
 
     // Output structure:
     //printGenForm(genForm1);
-
+	
     // TODO: check for feasibility - if all wi's are between upper and lower bounds
 
     // Convert genForm1 to simplex form
@@ -51,26 +51,37 @@ int main(int argc, char** argv)
     simplex1.nonbasic_upper = genForm1.u; 
     simplex1.nonbasic_values.set_size(1, genForm1.n);
     simplex1.nonbasic_values.fill(0.0);
+    simplex1.nonbasic_vars.set_size(1, genForm1.n);
 	// TODO: smarter way of choosing upper or lower for init nonbasic values?
 
     // Basic/Dependent Variables:
     simplex1.basic = genForm1.A;
     simplex1.basic_lower = trans(genForm1.a);
     simplex1.basic_upper = trans(genForm1.b);
+    simplex1.basic_vars.set_size(genForm1.m, 1);
+
 
 	// Setup the variable tracking
 	// the nonbasic vars are numbered 0 to (n-1) and the basic vars
 	// are numbered n to (n+m-1)
-	for(int row = 0; row < int(simplex1.nonbasic.n_rows); ++row)
-		simplex1.nonbasic_vars(row, 0) = row; // index the rows
-
-	for(int col = 0; col < int(simplex1.basic.n_cols); ++col)
-		simplex1.nonbasic_vars(col, 0) = col + simplex1.nonbasic.n_rows; // index the cols
-
+	
+	for(int col = 0; col < int(simplex1.nonbasic.n_cols); ++col)
+	{
+		simplex1.nonbasic_vars(0, col) = col; // index the rows
+	}
+	
+	for(int row = 0; row < int(simplex1.basic.n_rows); ++row)
+	{
+		simplex1.basic_vars(row, 0) = row + int(simplex1.nonbasic.n_cols); // index the rows
+	}
+	
+	simplex1.nonbasic_vars.print("Nonbasic");
+	simplex1.basic_vars.print("Basic");
+	
 	// Output the dictionary
     cout << "Simplex Step 0" << endl;
     printSimplexStep(simplex1);
-
+	
     // Check if its optimal
     if(isOptimal(simplex1))
 	{
@@ -93,16 +104,102 @@ int main(int argc, char** argv)
 	// Choose the entering variable
 	int entering_var_index = getEnteringVar(simplex1);
 	cout << "Entering variable: " << entering_var_index << endl;
+	
 	// Choose the leaving variable
 	int leaving_var_index = getLeavingVar(simplex1, entering_var_index);
 	cout << "Leaving variable: " << leaving_var_index << endl;
 
 	// Pivot
 	simplex1 = pivot(simplex1, entering_var_index, leaving_var_index);
+
+	// Output the dictionary
+    cout << "Simplex Step 1" << endl;
+    printSimplexStep(simplex1);
 	
 	cout << endl;
     return EXIT_SUCCESS;
 }
+//-------------------------------------------------------------------------------------------
+// Do the actual pivot
+//-------------------------------------------------------------------------------------------
+simplex pivot(simplex s1, int entering_var_index, int leaving_var_index)
+{
+	// Step 1: Create Replacement Rule --------------------------------------------------
+	
+	// First create the replacement rule
+	mat replacement_rule =s1.basic.row(leaving_var_index);
+	replacement_rule.print("Before");
+
+	// Replace the entering var coeff with a negative 1
+	replacement_rule(0, entering_var_index) = -1; // b/c we've subtracted from other side
+		
+	// Divide whole row by entering var coefficient
+	replacement_rule = replacement_rule / -1 * s1.basic(leaving_var_index, entering_var_index);
+
+	replacement_rule.print("After");
+
+	// Store the replacement rule back into the original row
+	s1.basic.row(leaving_var_index) = replacement_rule;
+
+	// Swap the variable names
+	int new_basic_var = s1.nonbasic_vars(0, entering_var_index);
+	s1.nonbasic_vars(0, entering_var_index) = s1.basic_vars(leaving_var_index, 0);
+	s1.basic_vars(leaving_var_index, 0) = new_basic_var;
+
+	s1.nonbasic_vars.print("Nonbasic Vars");
+	s1.basic_vars.print("Basic Vars");
+	
+	// Step 2: Substitute into Obj Function ------------------------------------------
+	
+	// Create replacement rule for obj function (step 1 of substiting in rep rule)
+	mat rep_rule1 = replacement_rule * s1.nonbasic(0, entering_var_index);
+	rep_rule1.print("Rep rule 1");
+
+	// Change entering variable position in nonbasic function to 0, temporarily
+	s1.nonbasic(0, entering_var_index) = 0;
+
+	// Now add the modified nonbasic rule with the custom replacement rule
+	s1.nonbasic = s1.nonbasic + rep_rule1;
+	s1.nonbasic.print("New nonbasic function");
+
+	// Swap upper and lower bounds from basic to nonbasic
+	double new_nonbasic_upper = s1.basic_upper(leaving_var_index, 0);
+	double new_nonbasic_lower = s1.basic_lower(leaving_var_index, 0);
+	s1.basic_upper(leaving_var_index, 0) = s1.nonbasic_upper(0, entering_var_index);
+	s1.basic_lower(leaving_var_index, 0) = s1.nonbasic_lower(0, entering_var_index);	
+	s1.nonbasic_upper(0, entering_var_index) = new_nonbasic_upper;
+	s1.nonbasic_lower(0, entering_var_index) = new_nonbasic_lower;
+	
+	// Step 3: Substitute into rest of constraints ------------------------------------
+
+	// Loop through every row
+	for(int row = 0; row < int(s1.basic.n_rows); ++row)
+	{
+		// Check if this row is not the replacement rule row (leaving row)
+		if(row != leaving_var_index)
+		{
+			cout << "Appling rep rule to row" << row  << endl;
+				
+			// It is not, do substitution
+			rep_rule1 = replacement_rule * s1.basic(row, entering_var_index);
+			
+			// Replace entering var location with 0
+			s1.basic(row, entering_var_index) = 0;
+
+			// Now add the custom replacement rule to the row
+			s1.basic.row(row).print("Before add");
+			rep_rule1.print("Rep rule");
+			s1.basic.row(row) = s1.basic.row(row) + rep_rule1;
+			s1.basic.row(row).print("After add");
+			
+		}
+	}
+
+	s1.basic.print("Dictionary after pivot");
+			
+	return s1;
+}
+		
 //-------------------------------------------------------------------------------------------
 // Get the row index of the corresponding leaving vaiable
 //-------------------------------------------------------------------------------------------
@@ -246,7 +343,7 @@ bool isFeasible(simplex s1)
 			value += s1.basic(row, col) * getNonbasicVal(s1, col);
 		}
 
-		cout << "Constraint Value = " << value << endl;
+		// cout << "Constraint Value = " << value << endl;
 		
 		// Now check if value is within constraint bounds
 		if( ! ( value >= s1.basic_lower(row, 0) &&
