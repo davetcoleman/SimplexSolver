@@ -224,11 +224,14 @@ void printDictionary(dictionary s1, int step)
 }
 //-------------------------------------------------------------------------------------------
 // Convert a variable name index into a name string
+// For example: 0 = x1, 1 = x2, 2 = w1, 3 = w2, 4 = w3
 //-------------------------------------------------------------------------------------------
 string resolveVarName(dictionary s1, int var_index)
 {
     ostringstream strs;
-    
+	
+
+	
 	// Check if var is nonbasic or basic
 	if(var_index >= int(s1.nonbasic.n_cols))
 	{

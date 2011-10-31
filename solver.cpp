@@ -15,6 +15,7 @@
 #include <sstream>
 #include <string>
 #include "solver.h"
+#include "assert.h"
 
 using namespace arma;
 using namespace std;
@@ -29,10 +30,6 @@ using namespace std;
 //----------------------------------------------------------
 int main(int argc, char** argv)
 {
-
-	// TODO: gets stuck at choosing entering leaving vars after
-	// step 2
-	
     cout << endl << "-------------------------------------" << endl;
     cout << "LP Solver for General Simplex Problems" << endl;
     cout << "by Dave Coleman" << endl;
@@ -67,20 +64,11 @@ int main(int argc, char** argv)
 
 	// Start Simplex -------------------------------------------------
 	int step = 1; // keep track of how many pivots we do
-	int entering_var_index, leaving_var_index;
 	
 	while(true)
 	{
-		// Choose the entering variable
-		entering_var_index = getEnteringVar(s1);
-		cout << "Entering variable: " << resolveVarName(s1, entering_var_index) << endl;
-	
-		// Choose the leaving variable
-		leaving_var_index = getLeavingVar(s1, entering_var_index);
-		cout << "Leaving variable: " << resolveVarName(s1, leaving_var_index + s1.nonbasic.n_cols) << endl;
-
 		// Pivot
-		s1 = pivot(s1, entering_var_index, leaving_var_index);
+		s1 = pivot(s1);
 
 		// Output the dictionary
 		printDictionary(s1, step);
@@ -94,7 +82,7 @@ int main(int argc, char** argv)
 		}
 
 		// Check for cycling or just bugs
-		if(step > 5)
+		if(step > 4)
 		{
 			cout << "Possible cycling occuring, ending" << endl;
 			break;
@@ -131,8 +119,11 @@ dictionary setup(dictionary s1)
 }
 //-------------------------------------------------------------------------------------------
 // Get the row index of the corresponding leaving vaiable
+// Returns an array where
+//    return[0] = row index of leaving variable and
+//    return[1] = 1 or 0 for upper or lower bound the leaving var will use
 //-------------------------------------------------------------------------------------------
-int getLeavingVar(dictionary s1, int entering_var_index)
+void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index, int& leaving_var_bound)
 {
 	// decide which constraint bounds it the most ( to the lowest value)
 	// in other words, find t < a where a is the smallest
@@ -142,10 +133,13 @@ int getLeavingVar(dictionary s1, int entering_var_index)
 	// store the constraint that limits the obj val the most
 	double smallest_const = numeric_limits<double>::infinity();
 	int    smallest_const_index = 0;
-
+	int    smallest_const_bound = -1; // 1 or 2 for lower or upper bound on smallest
+	
 	// loop through all constraints
 	for(int row = 0; row < int(s1.basic.n_rows); ++row)
 	{
+		other_coeff_total = 0; // reset the row coeff total for each new row
+		
 		// unload the data just so i can think!
 		lower = s1.basic_lower(row, 0);
 		upper = s1.basic_upper(row, 0);
@@ -187,17 +181,24 @@ int getLeavingVar(dictionary s1, int entering_var_index)
 		{
 			smallest_const = real_constraint;
 			smallest_const_index = row;
+			
+			// bound = 0 if lower, 1 if upper
+			smallest_const_bound = ! (coeff < 0); 
 		}
 
 	}
+	
 	// check that a leaving variable was found
 	if( smallest_const == numeric_limits<double>::infinity() )
 	{
 		cout << "No leaving variable found. Problem is unbounded." << endl;
 		throw;
 	}
+
+	assert(smallest_const_bound > -1); // make sure this value was updated
 	
-	return smallest_const_index;
+	leaving_var_index = smallest_const_index;
+	leaving_var_bound = smallest_const_bound;
 }
 //-------------------------------------------------------------------------------------------
 // Get the row index of the next entering variable
@@ -207,9 +208,27 @@ int getEnteringVar(dictionary s1)
 	// Does the same thing as isOptimal, except it checks all the vars and picks the best
 	// one to be the entering variable
 
-    u32 largest_coef_index;
-	double largest_coef = s1.nonbasic.max(largest_coef_index);
+	// Chooses the variable that will produce the largest increase in the obj function
+	// but also checks that said variable is not at its upper bound
 
+	double largest_coef = 0; // keep track of the largest found coefficient
+	int largest_coef_index = -1; // init with a not found flag
+	
+	for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
+	{
+		// check if this constraint is at its upper bound. if so, skip,
+		// because we can't increase it any further
+		if( s1.nonbasic_values(0, col) != 1 ) // is at lower bound, good.
+		{
+			// check if this is largest coefficient
+			if( s1.nonbasic(0, col) > largest_coef ) // yes, its the largest
+			{
+				largest_coef = s1.nonbasic(0, col);
+				largest_coef_index = col;
+			}
+		}
+	}
+	
 	// Check if no entering variable found. This should not happen
 	if(largest_coef <= 0)
 	{
@@ -295,8 +314,20 @@ double getNonbasicVal(dictionary s1, int index)
 //-------------------------------------------------------------------------------------------
 // Do the actual pivot
 //-------------------------------------------------------------------------------------------
-dictionary pivot(dictionary s1, int entering_var_index, int leaving_var_index)
+dictionary pivot(dictionary s1)
 {
+	
+	// Step 0: Find Entering and leaving variables ---------------------------------------
+	
+    // Choose the entering variable
+	int entering_var_index = getEnteringVar(s1);
+	cout << "Entering variable: " << resolveVarName(s1, s1.nonbasic_vars[entering_var_index]) << endl;
+
+	// Choose the leaving variable
+	int leaving_var_index, leaving_var_bound;	
+	getLeavingVar(s1, entering_var_index, leaving_var_index, leaving_var_bound);
+	cout << "Leaving variable: " << resolveVarName(s1, s1.basic_vars[leaving_var_index]) << endl << endl;
+	
 	// Step 1: Create Replacement Rule --------------------------------------------------
 	
 	// First create the replacement rule
@@ -307,7 +338,7 @@ dictionary pivot(dictionary s1, int entering_var_index, int leaving_var_index)
 	replacement_rule(0, entering_var_index) = -1; // b/c we've subtracted from other side
 		
 	// Divide whole row by entering var coefficient
-	replacement_rule = replacement_rule / -1 * s1.basic(leaving_var_index, entering_var_index);
+	replacement_rule = replacement_rule / (-1 * s1.basic(leaving_var_index, entering_var_index));
 
 	replacement_rule.print("After");
 
@@ -342,8 +373,34 @@ dictionary pivot(dictionary s1, int entering_var_index, int leaving_var_index)
 	s1.basic_lower(leaving_var_index, 0) = s1.nonbasic_lower(0, entering_var_index);	
 	s1.nonbasic_upper(0, entering_var_index) = new_nonbasic_upper;
 	s1.nonbasic_lower(0, entering_var_index) = new_nonbasic_lower;
+
+	// Step 3: Change the constraints the non-basic variables are resting on ----------
+
+	// If the leaving_var_bound was set to lower bound, move the nonbasic var bound to lower
+	if(leaving_var_bound == 0) // lower
+	{
+		s1.nonbasic_values(0, entering_var_index) = 0; // switch to lower
+	}
+	else
+	{
+		s1.nonbasic_values(0, entering_var_index) = 1; // switch to upper
+	}
 	
-	// Step 3: Substitute into rest of constraints ------------------------------------
+	/*
+	// Check if bound is resting on inifinity. This shouldn't happen, so switch
+	if( ! is_finite( s1.nonbasic_upper(0, entering_var_index) ) )
+	{
+		//cout << "Upper is resting on infinity. switching." << endl;
+		s1.nonbasic_values(0, entering_var_index) = 0; // switch to lower
+	}
+	if( ! is_finite( s1.nonbasic_lower(0, entering_var_index) ) )
+	{
+		//cout << "Lower is resting on negative infinity. switching." << endl;
+		s1.nonbasic_values(0, entering_var_index) = 1; // switch to upper
+	}	
+	*/
+	   
+	// Step 4: Substitute into rest of constraints ------------------------------------
 
 	// Loop through every row
 	for(int row = 0; row < int(s1.basic.n_rows); ++row)
@@ -351,8 +408,7 @@ dictionary pivot(dictionary s1, int entering_var_index, int leaving_var_index)
 		// Check if this row is not the replacement rule row (leaving row)
 		if(row != leaving_var_index)
 		{
-			cout << "Appling rep rule to row" << row  << endl;
-				
+			//cout << "Appling rep rule to row" << row  << endl;
 			// It is not, do substitution
 			rep_rule1 = replacement_rule * s1.basic(row, entering_var_index);
 			

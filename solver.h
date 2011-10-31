@@ -5,7 +5,7 @@
 dictionary setup(dictionary s1);
 
 // Get the row index of the corresponding leaving vaiable
-int getLeavingVar(dictionary s1, int entering_var_index);
+void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index, int& leaving_var_bound);
 	
 // Get the row index of the next entering variable
 int getEnteringVar(dictionary s1);
@@ -20,5 +20,5 @@ bool isFeasible(dictionary s1);
 double getNonbasicVal(dictionary s1, int index);
 
 // Do the actual pivot
-dictionary pivot(dictionary s1, int entering_var_index, int leaving_var_index);
+dictionary pivot(dictionary s1);
 
