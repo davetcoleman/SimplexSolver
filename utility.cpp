@@ -152,13 +152,12 @@ double convertCell(std::string &s) {
 //-------------------------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------------------------
-void printDictionary(dictionary s1, int step)
+void printDictionary(dictionary s1)
 {
-    cout << "Simplex Step " << step << endl;	
     cout << "-----------------------------------------------------------------------------------" << endl;
 	
 	// Print variable locations
-	cout << "\t \t \t |   ";
+	cout << "\t \t |    ";
 	for(int col = 0; col < int(s1.nonbasic_vars.n_cols); ++col)
 	{
 		cout << resolveVarName(s1, s1.nonbasic_vars(0, col)) << "  \t";
@@ -166,7 +165,7 @@ void printDictionary(dictionary s1, int step)
 	cout << endl;
 	
     // Print lower bounds
-    cout << "\tl \t \t |   ";
+    cout << "l \t \t |    ";
     for(int col = 0; col < int(s1.nonbasic_lower.n_cols); ++col)
     {
         // check if the nonbasic variable is currently on this bound
@@ -182,7 +181,7 @@ void printDictionary(dictionary s1, int step)
     cout << endl;
 
     // Print upper bounds
-    cout << "\t\t u \t |   ";
+    cout << "\t u \t |    ";
     for(int col = 0; col < int(s1.nonbasic_upper.n_cols); ++col)
     {
         // check if the nonbasic variable is currently on this bound
@@ -200,7 +199,7 @@ void printDictionary(dictionary s1, int step)
 
     
     // Print objective function
-    cout << "\t\t \t |z= ";
+    cout << "\t\t |z=  ";
     for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
     {
       cout << tabber(s1.nonbasic(0,col)) << " \t";
@@ -208,19 +207,22 @@ void printDictionary(dictionary s1, int step)
     cout << endl;
 
     cout << "-----------------------------------------------------------------------------------" << endl;
-	
+
+	// Print basic variables
     for(double row = 0; row < int(s1.basic.n_rows); ++row)
     {
-		cout << resolveVarName(s1, s1.basic_vars(row, 0)) << "\t";
         cout << s1.basic_lower(row,0) << " \t ";
-        cout << s1.basic_upper(row,0) << " \t |   ";
+        cout << s1.basic_upper(row,0) << " \t |";
+		cout << resolveVarName(s1, s1.basic_vars(row, 0)) << "  ";
 	 
 		for(int col = 0; col < int(s1.basic.n_cols); ++col)
 		{
 			cout << tabber(s1.basic(row, col)) << " \t ";
 		}
 
-		cout << endl;
+		// Print basic values
+		cout << "=" << tabber(s1.basic_values(row, 0)) << endl;
+
     }
     cout << "-----------------------------------------------------------------------------------" << endl;	
 

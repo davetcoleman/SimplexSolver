@@ -22,6 +22,7 @@ struct dictionary
 	mat basic_lower; // col of lower bounds for basic vars
 	mat basic_upper; // col of upper bounds for basic vars
 	mat basic_vars; // tracks the names of the variables as they move with simplex
+	mat basic_values; // caches the value of each row, mostly just for printing
 };
 
 // Read a problem from file
@@ -34,7 +35,7 @@ arma::mat readRow(int mn, std::string line);
 double convertCell(std::string &s);
 
 // Output to screen a formatted simplex step
-void printDictionary(dictionary s1, int step);
+void printDictionary(dictionary s1);
 
 // Convert a variable name index into a name string
 string resolveVarName(dictionary s1, int var_index);

@@ -34,7 +34,7 @@ int main(int argc, char** argv)
     cout << "LP Solver for General Simplex Problems" << endl;
     cout << "by Dave Coleman" << endl;
     cout << "-------------------------------------" << endl << endl;
-
+	/*
 	// Solve problem 1 -------------------------------------------------------------
 	VERBOSE = true;
     dictionary s1 = readProblem("chapter_example.txt");
@@ -51,8 +51,7 @@ int main(int argc, char** argv)
 		return 1;
 
 	cout << endl << endl << endl << endl << "Test 2" << endl << endl << endl;
-
-	throw;
+	*/
 	// Solve problem 2 -------------------------------------------------------------
 	VERBOSE = true;
 	
@@ -86,7 +85,10 @@ dictionary solveLP(dictionary s1)
 	
 	// Output the Initial Dictionary
 	if(VERBOSE)
-		printDictionary(s1, 0);
+	{
+		cout << "Intial Dictionary" << endl;	
+		printDictionary(s1);
+	}
 	
     // Check if its optimal
     if(isOptimal(s1))
@@ -137,20 +139,21 @@ dictionary simplex(dictionary s1)
 		// Check if dictionary is optimal
 		if(isOptimal(s1))
 		{
-			cout << "Optimal found!" << endl;
-			printDictionary(s1, step);						
+			cout << "Optimal Dictionary" << endl;
+			printDictionary(s1);
 			break;
 		}
 		// Check for cycling or just bugs
-		else if(step > 100)
+		else if(step > 4)
 		{
 			cout << "Possible cycling occuring, ending" << endl;
-			printDictionary(s1, step);						
+			printDictionary(s1);
 			break;
 		}
 		else if(VERBOSE)		// Output the dictionary
 		{
-			printDictionary(s1, step);			
+			cout << "Simplex Step " << step << endl;
+			printDictionary(s1);
 		}
 		++step;
 		
@@ -169,13 +172,6 @@ dictionary setup(dictionary s1)
 	// Decide how to rest the nonbasic variables
 	for(int col = 0; col < int(s1.nonbasic.n_cols); ++ col)
 	{
-		// TODO: REMOVE THIS RULE
-		// Rule 0:
-		//if( s1.nonbasic_lower(0, col) == -10 )
-		//{
-		//	s1.nonbasic_values(0, col) = 1;
-		//}
-		
 		// Rule 1: have bound rest on non-inifinte option
 		if( !is_finite(s1.nonbasic_lower(0, col) ) ) // lower bound is negative inifinte
 		{
@@ -199,8 +195,13 @@ dictionary setup(dictionary s1)
 				s1.nonbasic_values(0, col) = 1; // set to upper
 			}
 		}
-	}		
+	}
 
+	// Setup the basic var values cache
+	cout << "here " << endl;
+	s1.basic_values.set_size(s1.basic.n_rows, 1);
+	cout << "done " << endl;
+	
 	// Setup the variable tracking 
 	// Nonbasic Vars:       0 to (n-1)
 	// Basic Vars:          n to (n+m-1)
@@ -213,21 +214,21 @@ dictionary setup(dictionary s1)
 	
 	for(int row = 0; row < int(s1.basic.n_rows); ++row)
 		s1.basic_vars(row, 0) = row + int(s1.nonbasic.n_cols); // index the rows
+
+	// Calculate the slack variables
+	s1 = calculateSlack(s1);
 	
 	return s1;
 }
 //-------------------------------------------------------------------------------------------
 // Get the row index of the corresponding leaving vaiable
-// Returns an array where
-//    return[0] = row index of leaving variable and
-//    return[1] = 1 or 0 for upper or lower bound the leaving var will use
 //-------------------------------------------------------------------------------------------
 void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index, int& leaving_var_bound)
 {
 	// decide which constraint bounds it the most ( to the lowest value)
 	// in other words, find t < a where a is the smallest
 
-	double lower, upper, coeff = 0, other_coeff_total = 0, real_constraint;
+	double coeff = 0, other_coeff_total = 0, t = 0;
 	
 	// store the constraint that limits the obj val the most
 	double smallest_const = numeric_limits<double>::infinity();
@@ -237,12 +238,9 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 	// loop through all constraints
 	for(int row = 0; row < int(s1.basic.n_rows); ++row)
 	{
-		other_coeff_total = 0; // reset the row coeff total for each new row
+		// Step 1: Calcuate row parameters ----------------------------------------
 		
-		// unload the data just so i can think!
-		lower = s1.basic_lower(row, 0);
-		upper = s1.basic_upper(row, 0);
-
+		/*
 		// loop through all coefficents in constraint
 		for(int col = 0; col < int(s1.basic.n_cols); ++col)
 		{
@@ -259,30 +257,55 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 			}
 
 		}
-		
-		// now decide which side of the constraint we care about
-		// this is determined by the sign of the entering variable in this contraint
-		if(coeff < 0) // use lower bound
-		{
-			// move other constraint stuff to the other side of equality sign
-			real_constraint = lower - other_coeff_total;
-		}
-		else // use upper bound
-		{
-			real_constraint = upper - other_coeff_total;
-		}
-			
-		// move entering var coefficient to the other side
-		real_constraint = real_constraint / coeff;
 
-		// now decide if this is the smallest value
-		if( real_constraint < smallest_const )
+		// Get the current value of the row
+		t = s1.basic_values(row, 0);
+		*/
+
+
+		
+		// Step 2: Decide what constraint is active and lowest -------------------		
+		
+		// Decide which side of the constraint we care about
+		// this is determined by which bound the entering variable is on
+		if( s1.nonbasic_values(0, entering_var_index) == 1) // entering var at upper bound
 		{
-			smallest_const = real_constraint;
+			// ( LOWER bound of basic row - current value of row ) 
+			t = s1.basic_lower(row, 0) - s1.basic_values(row, 0);
+		}
+		else  //TODO what if zero?
+		{
+			// ( UPPER bound of basic row - current value of row ) 
+			t = s1.basic_upper(row, 0) - s1.basic_values(row, 0);
+		}
+
+		// Divide by coefficient of current row
+		t = t /  s1.basic(row, entering_var_index);
+		
+		//TODO: what if zero?
+
+
+		cout << "t value is " << t << " for row " << row << endl;
+		
+		// now decide if this is the smallest value
+		if( t < smallest_const )
+		{
+			smallest_const = t;
 			smallest_const_index = row;
-			
-			// bound = 0 if lower, 1 if upper
-			smallest_const_bound = ! (coeff < 0); 
+
+			// Choose which constraint is active in the leaving variable by matching
+			// t to one of the basic bounds
+			if( t == s1.basic_lower(row, 0) )
+			{
+				smallest_const_bound = 0;			// bound = 0 if lower, 1 if upper
+			}
+			else if (t == s1.basic_upper(row, 0) )
+			{
+				smallest_const_bound = 1; // upper
+			}
+
+			cout << "smallest const = " << t << " index " << smallest_const_index
+				 << " bounded at " << smallest_const_bound << endl;
 		}
 
 	}
@@ -299,21 +322,6 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 	leaving_var_index = smallest_const_index;
 	leaving_var_bound = smallest_const_bound;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 //-------------------------------------------------------------------------------------------
 // Get the row index of the next entering variable
@@ -457,15 +465,14 @@ bool isOptimal(dictionary s1)
 	return true;
 }
 //-------------------------------------------------------------------------------------------
-// Check if dictionaty is feasible
+// Calculates current value of each row
 //-------------------------------------------------------------------------------------------
-bool isFeasible(dictionary s1)
+dictionary calculateSlack(dictionary s1)
 {
 	//Calculate values of slack variables, Wn...
-
+	
 	double value; // holds the current row's solution value
-
-
+	
 	// Loop through each constraint
 	for(int row = 0; row < int(s1.basic.n_rows); ++row)
 	{
@@ -474,14 +481,24 @@ bool isFeasible(dictionary s1)
 	    for( int col = 0; col < int(s1.basic.n_cols); ++col)
 		{
 			// TODO: turn this into matrix math stuff.... ?
-			value += s1.basic(row, col) * getNonbasicVal(s1, col);
+			value += s1.basic(row, col) * getNonbasicVal(s1, col);			
 		}
-
-		// cout << "Constraint Value = " << value << endl;
-		
+		s1.basic_values(row, 0) = value;
+	}
+	
+	return s1;
+}
+//-------------------------------------------------------------------------------------------
+// Check if dictionaty is feasible
+//-------------------------------------------------------------------------------------------
+bool isFeasible(dictionary s1)
+{
+	// Loop through each constraint
+	for(int row = 0; row < int(s1.basic.n_rows); ++row)
+	{
 		// Now check if value is within constraint bounds
-		if( ! ( value >= s1.basic_lower(row, 0) &&
-			    value <= s1.basic_upper(row, 0) ) )
+		if( ! ( s1.basic_values(row, 0) >= s1.basic_lower(row, 0) &&
+			    s1.basic_values(row, 0) <= s1.basic_upper(row, 0) ) )
 		{
 			return false; // constraint not satisfied
 		}
@@ -590,6 +607,9 @@ dictionary pivot(dictionary s1)
 		}
 	}
 
+	// Step 5: Update slack variable amount/row solutions
+	s1 = calculateSlack(s1);	
+
 	return s1;
 }
 //-------------------------------------------------------------------------------------------
@@ -670,10 +690,14 @@ dictionary initialize(dictionary s1)
 			}
 
 		}
-	}	
+	}
+
+	// Update slack variable amount/row solutions
+	s2 = calculateSlack(s2);		
 
 	// We now have a dictionary ready for the initialization phase:
-	printDictionary(s2, 99);
+    cout << "New Auxillary Problem " << endl;		
+	printDictionary(s2);
 
 	s2 = simplex(s2);
 
