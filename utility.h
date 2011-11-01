@@ -1,10 +1,17 @@
 #include <armadillo>
+#include <iomanip>
 
 using namespace arma;
 using namespace std;
 
+
+
+
 struct dictionary
 {
+	int n; // number of ORIGINAL nonbasic vars. used for printing variable names only
+	int m; // number of ORIGINAL basic vars. used for printing variable names only
+
 	mat nonbasic; // the row of the non basic variables in the objective function
 	mat nonbasic_values; // bool row -   0 = lower and     1 = upper
 	mat nonbasic_lower; // row of lower bounds for nonbasic vars
@@ -18,7 +25,7 @@ struct dictionary
 };
 
 // Read a problem from file
-dictionary readProblem();
+dictionary readProblem(const char* filename);
 
 // Read a row and convert to matrix
 arma::mat readRow(int mn, std::string line);

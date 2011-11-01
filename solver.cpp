@@ -23,7 +23,7 @@ using namespace std;
 //----------------------------------------------------------
 // Global Vars:
 //----------------------------------------------------------
-
+bool VERBOSE = false;
 
 //----------------------------------------------------------
 // Main Function
@@ -35,33 +35,97 @@ int main(int argc, char** argv)
     cout << "by Dave Coleman" << endl;
     cout << "-------------------------------------" << endl << endl;
 
-    dictionary s1 = readProblem();
+	// Solve problem 1 -------------------------------------------------------------
+	VERBOSE = true;
+    dictionary s1 = readProblem("chapter_example.txt");
+	dictionary result1 = solveLP(s1);
+
+	// Create the answer
+	dictionary answer1;
+
+	// Chapter Example Answer:
+	answer1.nonbasic << 1.5 << 0.5;
+	answer1.basic << 0.5 << 0.5 << endr << -1.5 << 0.5 << endr << -0.5 << 0.5 << endr;
+
+	if( ! dictionaryIsEqual(result1, answer1) )
+		return 1;
+
+	cout << endl << endl << endl << endl << "Test 2" << endl << endl << endl;
+
+	throw;
+	// Solve problem 2 -------------------------------------------------------------
+	VERBOSE = true;
+	
+    dictionary s2 = readProblem("example1.txt");
+	dictionary result2 = solveLP(s2);
+
+	// Create the answer
+	dictionary answer2;
+
+	// Chapter Example Answer:
+	answer2.nonbasic << 1.51614 << -1.30661;
+	answer2.basic << 0.5 << 0.5 << endr << -1.5 << 0.5 << endr << -0.5 << 0.5 << endr;
+
+	if( ! dictionaryIsEqual(result2, answer2) )
+		return 1;	
+
+	
+
+
+
+	
+	cout << endl;
+	return EXIT_SUCCESS;
+}
+//-------------------------------------------------------------------------------------------
+// Solve Linear Program
+//-------------------------------------------------------------------------------------------
+dictionary solveLP(dictionary s1)
+{
 	s1 = setup(s1); // setup variable tracking, etc
 	
 	// Output the Initial Dictionary
-    printDictionary(s1, 0);
+	if(VERBOSE)
+		printDictionary(s1, 0);
 	
     // Check if its optimal
     if(isOptimal(s1))
 	{
 		cout << "This LP problem is optimal!" << endl;
-		return EXIT_SUCCESS; // nothing else to do
+		return s1;
 	}
 	else
 	{
-		cout << "Not optimal" << endl;
+		if(VERBOSE)
+			cout << "Not optimal" << endl;
 	}
 
 	if(isFeasible(s1))
 	{
-		cout << "This LP problem is feasible" << endl;
+		if(VERBOSE)
+			cout << "This LP problem is feasible" << endl;
 	}
 	else
 	{
-		cout << "Not feasible" << endl;
-		return EXIT_SUCCESS; // bad problem
+		if(VERBOSE)
+			cout << "Not feasible. Beginning initialization phase." << endl;
+
+		s1 = initialize(s1);
+
+		// Check if feasible now, just to be sure :-)
+		if( !isFeasible(s1))
+		{
+			cout << "Still not feasible. Fail." << endl;
+			throw;
+		}
 	}
 
+	// Run simplex and return the result
+	return simplex(s1);
+}
+
+dictionary simplex(dictionary s1)
+{
 	// Start Simplex -------------------------------------------------
 	int step = 1; // keep track of how many pivots we do
 	
@@ -70,42 +134,77 @@ int main(int argc, char** argv)
 		// Pivot
 		s1 = pivot(s1);
 
-		// Output the dictionary
-		printDictionary(s1, step);
-		++step;
-
 		// Check if dictionary is optimal
 		if(isOptimal(s1))
 		{
 			cout << "Optimal found!" << endl;
+			printDictionary(s1, step);						
 			break;
 		}
-
 		// Check for cycling or just bugs
-		if(step > 4)
+		else if(step > 100)
 		{
 			cout << "Possible cycling occuring, ending" << endl;
+			printDictionary(s1, step);						
 			break;
 		}
+		else if(VERBOSE)		// Output the dictionary
+		{
+			printDictionary(s1, step);			
+		}
+		++step;
+		
 	}
 	
-	cout << endl;
-    return EXIT_SUCCESS;
+    return s1;
 }
 //-------------------------------------------------------------------------------------------
 // Setup remaining details of general form dictionary 
 //-------------------------------------------------------------------------------------------
 dictionary setup(dictionary s1)
 {
-	// Set all nonbasic vars to rest on lower bounds
+	// Initialize the size of the nonbasic values matrix
     s1.nonbasic_values.set_size(1, s1.nonbasic.n_cols);
-    s1.nonbasic_values.fill(0.0);
-	// TODO: smarter way of choosing upper or lower for init nonbasic values?
-	// for now it just assings all to lower
+	
+	// Decide how to rest the nonbasic variables
+	for(int col = 0; col < int(s1.nonbasic.n_cols); ++ col)
+	{
+		// TODO: REMOVE THIS RULE
+		// Rule 0:
+		//if( s1.nonbasic_lower(0, col) == -10 )
+		//{
+		//	s1.nonbasic_values(0, col) = 1;
+		//}
+		
+		// Rule 1: have bound rest on non-inifinte option
+		if( !is_finite(s1.nonbasic_lower(0, col) ) ) // lower bound is negative inifinte
+		{
+			s1.nonbasic_values(0, col) = 1; // set to upper bound
+		}
+		else if( !is_finite(s1.nonbasic_upper(0, col) ) ) // upper bound is inifinte
+		{
+			s1.nonbasic_values(0, col) = 0; // set to lower bound
+			// TODO: what if both lower and upper are infinite?
+		}
+		// Rule 2: Choose bound which maximizes the objective
+		else
+		{
+			// so, if coefficient is negative choose lower, otherwise opposite
+			if( s1.nonbasic(0, col) < 0 ) // is negative
+			{
+				s1.nonbasic_values(0, col) = 0; // set to lower
+			}
+			else
+			{
+				s1.nonbasic_values(0, col) = 1; // set to upper
+			}
+		}
+	}		
 
 	// Setup the variable tracking 
-	// the nonbasic vars are numbered 0 to (n-1) and the basic vars
-	// are numbered n to (n+m-1)
+	// Nonbasic Vars:       0 to (n-1)
+	// Basic Vars:          n to (n+m-1)
+	// Auxillary Vars e:    (n+m) to (n+m+n_es-1)
     s1.nonbasic_vars.set_size(1, s1.nonbasic.n_cols);
     s1.basic_vars.set_size(s1.basic.n_rows, 1);
 		
@@ -200,25 +299,86 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 	leaving_var_index = smallest_const_index;
 	leaving_var_bound = smallest_const_bound;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //-------------------------------------------------------------------------------------------
 // Get the row index of the next entering variable
 //-------------------------------------------------------------------------------------------
 int getEnteringVar(dictionary s1)
 {
+	// NEW METHOD:
+	// c*x is a candidate for leaving if:
+	//  1) x is on its lower bound AND c  > 0
+	//  OR
+	//  2) x is on its upper bound AND c < 0
+	//
+	// Choose the candidate that increases z the most
+	// TODO: is this last part true?
+
+	double largest_coef = -1*numeric_limits<double>::infinity(); // keep track of the largest found coefficient
+	int largest_coef_index = -1; // init with a not found flag	
+
+	// TODO: check is optimal to 0 condition
+	
+	for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
+	{
+		// 1) Check if coefficeint is positive and at lower bound
+		if(s1.nonbasic(0, col) > 0 && s1.nonbasic_values(0, col) == 0)
+		{
+			// is candidate to leave
+			if(s1.nonbasic(0, col) > largest_coef)
+			{
+				largest_coef = s1.nonbasic(0, col);
+				largest_coef_index = col;
+				break; // this is Bland's rule
+			}
+		}
+		// 2) Check if coefficient is negative and at upper bound
+		else if(s1.nonbasic(0, col) < 0 && s1.nonbasic_values(0, col) == 1)
+		{
+			// is candidate to leave
+			if(s1.nonbasic(0, col) > largest_coef)
+			{
+				largest_coef = s1.nonbasic(0, col);
+				largest_coef_index = col;
+				break; // this is Bland's rule				
+			}			
+		}
+	}
+
+
+	// OLD METHOD:
 	// Does the same thing as isOptimal, except it checks all the vars and picks the best
 	// one to be the entering variable
 
 	// Chooses the variable that will produce the largest increase in the obj function
 	// but also checks that said variable is not at its upper bound
 
-	double largest_coef = 0; // keep track of the largest found coefficient
+	/*	double largest_coef = 0; 
+	double largest_coef = -1*numeric_limits<double>::infinity(); // keep track of the largest found coefficient
 	int largest_coef_index = -1; // init with a not found flag
+
+	cout << "Looking for largest coeff" << endl << largest_coef << endl;
 	
 	for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
 	{
 		// check if this constraint is at its upper bound. if so, skip,
 		// because we can't increase it any further
-		if( s1.nonbasic_values(0, col) != 1 ) // is at lower bound, good.
+		if( s1.nonbasic_values(0, col) != 1 ) // var is not on upper bound
 		{
 			// check if this is largest coefficient
 			if( s1.nonbasic(0, col) > largest_coef ) // yes, its the largest
@@ -228,9 +388,11 @@ int getEnteringVar(dictionary s1)
 			}
 		}
 	}
+	*/
+
 	
 	// Check if no entering variable found. This should not happen
-	if(largest_coef <= 0)
+	if(largest_coef == -1*numeric_limits<double>::infinity())
 	{
 		cout << "No entering variable found. This function is not feasible." << endl;
 		throw;
@@ -243,14 +405,40 @@ int getEnteringVar(dictionary s1)
 //-------------------------------------------------------------------------------------------
 bool isOptimal(dictionary s1)
 {
-	// Todo: make sure this is the correct way to check for optimality
-   
+	// NEW METHOD:
+	// Check that all coefficients in the obj function are:
+	//  1) negative and at lower bound
+	//  OR
+	//  2) positive and at upper bound
+	//
+	// If this isnt true for all coefficients, prob is not optimal
+	
+	for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
+	{
+		// 1) Check if coefficeint is negative and at lower bound
+		if(s1.nonbasic(0, col) < 0 && s1.nonbasic_values(0, col) == 0)
+		{
+			// this var is as optimal as it can get
+		}
+		// 2) Check if coefficient is positive and at upper bound
+		else if(s1.nonbasic(0, col) > 0 && s1.nonbasic_values(0, col) == 1)
+		{
+			// this var is as optimal as it can get
+		}
+		else
+		{
+			return false;
+		}
+
+	}
+	
+	// OLD:
 	// Check if all coefficients in objective function are negative
 	// if not negative, check if the positive coefficient is at its upper bound
 	// if not at upper bound, the solution is not optimal
-	for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
-	{
-		// Check if coefficient is positive
+
+		
+		/* Check if coefficient is positive
 		if(s1.nonbasic(0, col) >= 0) 
 		{
 			// is positive
@@ -263,9 +451,9 @@ bool isOptimal(dictionary s1)
 			}
 
 		}
-	}
-	
+		*/
 
+	
 	return true;
 }
 //-------------------------------------------------------------------------------------------
@@ -276,6 +464,7 @@ bool isFeasible(dictionary s1)
 	//Calculate values of slack variables, Wn...
 
 	double value; // holds the current row's solution value
+
 
 	// Loop through each constraint
 	for(int row = 0; row < int(s1.basic.n_rows); ++row)
@@ -321,26 +510,25 @@ dictionary pivot(dictionary s1)
 	
     // Choose the entering variable
 	int entering_var_index = getEnteringVar(s1);
-	cout << "Entering variable: " << resolveVarName(s1, s1.nonbasic_vars[entering_var_index]) << endl;
+	if(VERBOSE)
+		cout << "Entering variable: " << resolveVarName(s1, s1.nonbasic_vars[entering_var_index]) << endl;
 
 	// Choose the leaving variable
 	int leaving_var_index, leaving_var_bound;	
 	getLeavingVar(s1, entering_var_index, leaving_var_index, leaving_var_bound);
-	cout << "Leaving variable: " << resolveVarName(s1, s1.basic_vars[leaving_var_index]) << endl << endl;
+	if(VERBOSE)
+		cout << "Leaving variable: " << resolveVarName(s1, s1.basic_vars[leaving_var_index]) << endl << endl;
 	
 	// Step 1: Create Replacement Rule --------------------------------------------------
 	
 	// First create the replacement rule
 	mat replacement_rule =s1.basic.row(leaving_var_index);
-	replacement_rule.print("Before");
 
 	// Replace the entering var coeff with a negative 1
 	replacement_rule(0, entering_var_index) = -1; // b/c we've subtracted from other side
 		
 	// Divide whole row by entering var coefficient
 	replacement_rule = replacement_rule / (-1 * s1.basic(leaving_var_index, entering_var_index));
-
-	replacement_rule.print("After");
 
 	// Store the replacement rule back into the original row
 	s1.basic.row(leaving_var_index) = replacement_rule;
@@ -350,21 +538,16 @@ dictionary pivot(dictionary s1)
 	s1.nonbasic_vars(0, entering_var_index) = s1.basic_vars(leaving_var_index, 0);
 	s1.basic_vars(leaving_var_index, 0) = new_basic_var;
 
-	s1.nonbasic_vars.print("Nonbasic Vars");
-	s1.basic_vars.print("Basic Vars");
-	
 	// Step 2: Substitute into Obj Function ------------------------------------------
 	
 	// Create replacement rule for obj function (step 1 of substiting in rep rule)
 	mat rep_rule1 = replacement_rule * s1.nonbasic(0, entering_var_index);
-	rep_rule1.print("Rep rule 1");
 
 	// Change entering variable position in nonbasic function to 0, temporarily
 	s1.nonbasic(0, entering_var_index) = 0;
 
 	// Now add the modified nonbasic rule with the custom replacement rule
 	s1.nonbasic = s1.nonbasic + rep_rule1;
-	s1.nonbasic.print("New nonbasic function");
 
 	// Swap upper and lower bounds from basic to nonbasic
 	double new_nonbasic_upper = s1.basic_upper(leaving_var_index, 0);
@@ -386,20 +569,6 @@ dictionary pivot(dictionary s1)
 		s1.nonbasic_values(0, entering_var_index) = 1; // switch to upper
 	}
 	
-	/*
-	// Check if bound is resting on inifinity. This shouldn't happen, so switch
-	if( ! is_finite( s1.nonbasic_upper(0, entering_var_index) ) )
-	{
-		//cout << "Upper is resting on infinity. switching." << endl;
-		s1.nonbasic_values(0, entering_var_index) = 0; // switch to lower
-	}
-	if( ! is_finite( s1.nonbasic_lower(0, entering_var_index) ) )
-	{
-		//cout << "Lower is resting on negative infinity. switching." << endl;
-		s1.nonbasic_values(0, entering_var_index) = 1; // switch to upper
-	}	
-	*/
-	   
 	// Step 4: Substitute into rest of constraints ------------------------------------
 
 	// Loop through every row
@@ -416,18 +585,156 @@ dictionary pivot(dictionary s1)
 			s1.basic(row, entering_var_index) = 0;
 
 			// Now add the custom replacement rule to the row
-			s1.basic.row(row).print("Before add");
-			rep_rule1.print("Rep rule");
 			s1.basic.row(row) = s1.basic.row(row) + rep_rule1;
-			s1.basic.row(row).print("After add");
 			
 		}
 	}
 
-	s1.basic.print("Dictionary after pivot");
-			
 	return s1;
 }
+//-------------------------------------------------------------------------------------------
+// Intialize the problem through dualization
+//-------------------------------------------------------------------------------------------
+dictionary initialize(dictionary s1)
+{
+	// Create a copy of the s1 general form dictionary
+	// and perform initialization until problem becomes feasible
+
+	dictionary s2 = s1;
+	
+	// Introduce variables e1 to ek to force infeasible variables back into appropriate ranges
+
+	double value; // holds the current row's solution value. this tells us the sign for var e
+
+	// Assume we will be adding auxillary variables, so go ahead and clear out objective function
+	s2.nonbasic.fill(0); // set all to zero
+
+	// Loop through each constraint
+	for(int row = 0; row < int(s2.basic.n_rows); ++row)
+	{
+		value = 0; //reset the row value amount
+		
+	    for( int col = 0; col < int(s2.basic.n_cols); ++col)
+		{
+			value += s2.basic(row, col) * getNonbasicVal(s2, col);
+		}
+
+		// Now check if value is within constraint bounds
+		if( ! ( value >= s2.basic_lower(row, 0) &&
+			    value <= s2.basic_upper(row, 0) ) )
+		{
+			// constraint not satisfied. so now we add e variable
+			cout << endl << "OUT OF BOUNDS CONSTRAINT ON ROW " << row << endl;
+			cout << "Constraint Value = " << value << endl;
+
+			// Add column at right of matrix with all zeros
+			s2.basic.insert_cols(s2.basic.n_cols, 1);
+			
+			// Add new column to all nonbasic matricies
+			s2.nonbasic.insert_cols(s2.nonbasic.n_cols, 1);
+			s2.nonbasic_lower.insert_cols(s2.nonbasic_lower.n_cols, 1);
+			s2.nonbasic_upper.insert_cols(s2.nonbasic_upper.n_cols, 1);
+			s2.nonbasic_values.insert_cols(s2.nonbasic_values.n_cols, 1);
+			s2.nonbasic_vars.insert_cols(s2.nonbasic_vars.n_cols, 1);
+
+			// Set new objective to negative of auxillary variable
+			s2.nonbasic(0, s2.nonbasic.n_cols - 1) = -1;
+			
+			// Always set lower bound of ex to 0
+			s2.nonbasic_lower(0, s2.nonbasic_lower.n_cols - 1) = 0;
+
+			// Set nonbasic constraint to rest on upper bound
+			s2.nonbasic_values(0, s2.nonbasic_values.n_cols - 1) = 1;
+
+			// Set nonbasic var names
+			s2.nonbasic_vars(0, s2.nonbasic_vars.n_cols - 1) = s2.nonbasic_vars.n_cols + s2.basic_vars.n_rows - 1;
+
+			// Check if TOO SMALL
+			if( value < s2.basic_lower(row, 0) )
+			{
+				s2.basic(row, s2.basic.n_cols - 1) = 1; // ADD ek to row
+
+				// set upper bound equal to LOWER LIMIT - SOLUTION
+				s2.nonbasic_upper(0, s2.nonbasic_upper.n_cols - 1) =
+					s2.basic_lower(row, 0) - value;
+			}
+
+			// CHECK if TOO LARGE
+			if( value > s2.basic_upper(row, 0) )
+			{
+				s2.basic(row, s2.basic.n_cols - 1) = -1; // SUBTRACT ek from row
+
+				// set upper bound equal to SOLUTION - UPPER LIMIT
+				s2.nonbasic_upper(0, s2.nonbasic_upper.n_cols - 1) =
+					value - s2.basic_upper(row, 0);
+			}
+
+		}
+	}	
+
+	// We now have a dictionary ready for the initialization phase:
+	printDictionary(s2, 99);
+
+	s2 = simplex(s2);
+
+
+	cout << endl << "AT BOTTOM OF INITILIZATION" << endl;
+
+	
+	//orig: printDictionary(s1, 89);
+	
+
+    cout << endl;
+    throw;
+
+	// TODO: convert s2 back to s1
+	
+	return s1;
+}
+//-------------------------------------------------------------------------------------------
+// Compare 2 Dictionaries
+//-------------------------------------------------------------------------------------------
+bool dictionaryIsEqual(dictionary d1, dictionary d2)
+{
+	// Compare nonbasic matrix
+	umat compareMatrix = (d1.nonbasic == d2.nonbasic);
+	
+	if( accu(compareMatrix) == double( d1.nonbasic.n_cols * d1.nonbasic.n_rows ) )
+	{
+		// Compare basic matrix
+		compareMatrix = (d1.basic == d2.basic);
+	
+		if( accu(compareMatrix) == double( d1.basic.n_cols * d1.basic.n_rows ) )
+		{
+			if(VERBOSE)
+			{
+				cout << "Answer is correct" << endl;
+			}
+			return true;
+		}
+		else
+		{
+			cout << "Basic matrix not the same." << endl;
+			d1.basic.print("D1 Basic");
+			d2.basic.print("D2 Basic");
+			return false;
+		}
+	}
+	else
+	{
+		cout << "Non basic matrix not the same." << endl;
+		d1.nonbasic.print("D1 Nonbasic");
+		d2.nonbasic.print("D2 Nonbasic");
+		
+		return false;
+	}
+}
+//-------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------------------------

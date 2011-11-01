@@ -44,13 +44,13 @@ static inline std::string &rtrim(std::string &s);
   u1... un %% Var upper bounds can have Inf entries
 */
 //-------------------------------------------------------------------------------------------
-dictionary readProblem()
+dictionary readProblem(const char* filename)
 {
 	// Create new general form problem
 	dictionary inputGenForm;
 
     // Read the actual file
-    std::ifstream  data("chapter_example.txt");
+    std::ifstream  data(filename);
 
     std::string line;
 
@@ -63,36 +63,36 @@ dictionary readProblem()
 
     // Get the number of constraints
     getline(lineStream,cell,',');
-    int constraints_m = convertCell(cell);
+    inputGenForm.m = convertCell(cell);
 
     // Get the number of variables
     getline(lineStream,cell,',');
-    int variables_n = convertCell(cell);
+    inputGenForm.n = convertCell(cell);
 
     // --------------------------------------------------------------------
     // The second line has the objective coeffients
 
     std::getline(data,line);
-    inputGenForm.nonbasic = readRow(variables_n, line);
+    inputGenForm.nonbasic = readRow(inputGenForm.n, line);
 
     // --------------------------------------------------------------------
     // The next m lines have the matrix rows
 
-    mat A(constraints_m,variables_n);    // Set the size of matrix A
+    mat A(inputGenForm.m,inputGenForm.n);    // Set the size of matrix A
 
-    for(int m = 0; m < constraints_m; ++m)
+    for(int m = 0; m < inputGenForm.m; ++m)
     {
-      getline(data,line);
-      std::stringstream  lineStream(line);
+		getline(data,line);
+		std::stringstream  lineStream(line);
 
-      for(int n = 0; n < variables_n; ++n)
-      {
-	// Get next number
-	getline(lineStream,cell,',');
+		for(int n = 0; n < inputGenForm.n; ++n)
+		{
+			// Get next number
+			getline(lineStream,cell,',');
 
-	// Save next number to matrix
-	A(m,n) = convertCell(cell);
-      }
+			// Save next number to matrix
+			A(m,n) = convertCell(cell);
+		}
     }
 
     inputGenForm.basic = A;
@@ -100,22 +100,22 @@ dictionary readProblem()
     // --------------------------------------------------------------------
     // The fourth to last line is lower boud vector
     std::getline(data,line);
-    inputGenForm.basic_lower = trans(readRow(constraints_m, line));
+    inputGenForm.basic_lower = trans(readRow(inputGenForm.m, line));
 
     // --------------------------------------------------------------------
     // 3rd to last: uppper bound vector
     std::getline(data,line);
-    inputGenForm.basic_upper = trans(readRow(constraints_m, line));
+    inputGenForm.basic_upper = trans(readRow(inputGenForm.m, line));
 
     // --------------------------------------------------------------------
     // 2nd to last: var lower bound
     std::getline(data,line);
-    inputGenForm.nonbasic_lower = readRow(variables_n, line);
+    inputGenForm.nonbasic_lower = readRow(inputGenForm.n, line);
 
     // --------------------------------------------------------------------
     // last: var upper bounds
     std::getline(data,line);
-    inputGenForm.nonbasic_upper = readRow(variables_n, line);
+    inputGenForm.nonbasic_upper = readRow(inputGenForm.n, line);
 
     return inputGenForm;
 }
@@ -155,57 +155,60 @@ double convertCell(std::string &s) {
 void printDictionary(dictionary s1, int step)
 {
     cout << "Simplex Step " << step << endl;	
-    cout << "--------------------------------------------------------------------------" << endl;
+    cout << "-----------------------------------------------------------------------------------" << endl;
+	
 	// Print variable locations
 	cout << "\t \t \t |   ";
-	for(int i = 0; i < int(s1.nonbasic.n_cols); ++i)
+	for(int col = 0; col < int(s1.nonbasic_vars.n_cols); ++col)
 	{
-		cout << resolveVarName(s1, s1.nonbasic_vars(0, i)) << " \t";
+		cout << resolveVarName(s1, s1.nonbasic_vars(0, col)) << "  \t";
 	}
 	cout << endl;
 	
     // Print lower bounds
     cout << "\tl \t \t |   ";
-    for(int i = 0; i <= int(s1.nonbasic_lower.n_rows); ++i)
+    for(int col = 0; col < int(s1.nonbasic_lower.n_cols); ++col)
     {
         // check if the nonbasic variable is currently on this bound
-        if(s1.nonbasic_values(0,i) == 0)
-	{
-	    cout << "\033[1;31m"<< tabber(s1.nonbasic_lower(0,i)) << "\033[0m \t";
-	}
-	else
-	{
-	    cout << tabber(s1.nonbasic_lower(0,i)) << "\t";
-	}
+		if(s1.nonbasic_values(0,col) == 0)
+		{
+			cout << "\033[1;31m"<< tabber(s1.nonbasic_lower(0,col)) << "\033[0m \t";
+		}
+		else
+		{
+			cout << tabber(s1.nonbasic_lower(0,col)) << "\t";
+		}
     }
     cout << endl;
 
     // Print upper bounds
     cout << "\t\t u \t |   ";
-    for(int i = 0; i <= int(s1.nonbasic_upper.n_rows); ++i)
+    for(int col = 0; col < int(s1.nonbasic_upper.n_cols); ++col)
     {
         // check if the nonbasic variable is currently on this bound
-        if(s1.nonbasic_values(0,i) == 1)
-	{
-	    cout << "\033[1;31m"<< tabber(s1.nonbasic_upper(0,i)) << "\033[0m \t";
-	}
-	else
-	{
-	    cout << tabber(s1.nonbasic_upper(0,i)) << " \t";
-	}
+        if(s1.nonbasic_values(0,col) == 1)
+		{
+			cout << "\033[1;31m"<< tabber(s1.nonbasic_upper(0,col)) << "\033[0m \t";
+		}
+		else
+		{
+			cout << tabber(s1.nonbasic_upper(0,col)) << " \t";
+		}
     }
     cout << endl;
-    cout << "--------------------------------------------------------------------------" << endl;
+    cout << "-----------------------------------------------------------------------------------" << endl;	
+
     
     // Print objective function
     cout << "\t\t \t |z= ";
-    for(int i = 0; i <= int(s1.nonbasic.n_rows); ++i)
+    for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
     {
-      cout << tabber(s1.nonbasic(0,i)) << " \t";
+      cout << tabber(s1.nonbasic(0,col)) << " \t";
     }
     cout << endl;
-    cout << "--------------------------------------------------------------------------" << endl;
 
+    cout << "-----------------------------------------------------------------------------------" << endl;
+	
     for(double row = 0; row < int(s1.basic.n_rows); ++row)
     {
 		cout << resolveVarName(s1, s1.basic_vars(row, 0)) << "\t";
@@ -219,31 +222,40 @@ void printDictionary(dictionary s1, int step)
 
 		cout << endl;
     }
-    cout << "--------------------------------------------------------------------------" << endl;
+    cout << "-----------------------------------------------------------------------------------" << endl;	
+
 
 }
 //-------------------------------------------------------------------------------------------
 // Convert a variable name index into a name string
 // For example: 0 = x1, 1 = x2, 2 = w1, 3 = w2, 4 = w3
+//
+// Nonbasic Vars:       0 to (n-1)
+// Basic Vars:          n to (n+m-1)
+// Auxillary Vars e:    (n+m) to (n+m+n_es-1)
 //-------------------------------------------------------------------------------------------
 string resolveVarName(dictionary s1, int var_index)
 {
     ostringstream strs;
+   
 	
-
-	
-	// Check if var is nonbasic or basic
-	if(var_index >= int(s1.nonbasic.n_cols))
+	// Check if var is nonbasic
+	if(var_index < s1.n)
 	{
-		// is a basic var
-		strs << (var_index - s1.nonbasic.n_cols + 1);		
-		return "w"+strs.str();
-	}
-	else
-	{
-		// is a non basic var
    	    strs << (var_index + 1);
 		return "x"+strs.str();		
+	}
+	// Check if var is basic
+	else if( var_index < s1.n + s1.m )
+	{
+		strs << (var_index - s1.n + 1);		
+		return "w"+strs.str();
+	}
+	// Assume var is auxillary
+	else
+	{
+		strs << (var_index - s1.n - s1.m + 1);		
+		return "e"+strs.str();		
 	}
 }
 //-------------------------------------------------------------------------------------------
@@ -252,14 +264,15 @@ string resolveVarName(dictionary s1, int var_index)
 string tabber(double num)
 {
     ostringstream strs;
-    strs << num;
-    
+
     if(num >= 0 && num < 10)
     {
-        return strs.str() + " ";
+		strs << num << "  ";
+        return strs.str();
     }
     else
     {
+		strs << num;		
         return strs.str();
     }
 }
