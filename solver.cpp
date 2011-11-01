@@ -238,47 +238,41 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 	// loop through all constraints
 	for(int row = 0; row < int(s1.basic.n_rows); ++row)
 	{
-		// Step 1: Calcuate row parameters ----------------------------------------
+		// Decide what constraint is active and lowest -------------------		
 		
-		/*
-		// loop through all coefficents in constraint
-		for(int col = 0; col < int(s1.basic.n_cols); ++col)
+		// CASE 1: Entering variable is on UPPER bound AND entering variable row coefficient is POSITIVE
+		if( s1.nonbasic_values(0, entering_var_index) == 1 &&
+			s1.basic(row, entering_var_index) > 0)
 		{
-			// check if current constraint is the entering var
-			if(col == entering_var_index)
-			{
-				// this is the entering variable coeff for this constraint
-				coeff = s1.basic(row,col);
-			}
-			else
-			{
-				// calculate value of rest of constraint
-			    other_coeff_total += s1.basic(row,col) * getNonbasicVal(s1, col);
-			}
-
-		}
-
-		// Get the current value of the row
-		t = s1.basic_values(row, 0);
-		*/
-
-
-		
-		// Step 2: Decide what constraint is active and lowest -------------------		
-		
-		// Decide which side of the constraint we care about
-		// this is determined by which bound the entering variable is on
-		if( s1.nonbasic_values(0, entering_var_index) == 1) // entering var at upper bound
-		{
-			// ( LOWER bound of basic row - current value of row ) 
+			// LOWER bound of basic row - current value of row
 			t = s1.basic_lower(row, 0) - s1.basic_values(row, 0);
 		}
-		else  //TODO what if zero?
+   		// CASE 2: Entering variable is on LOWER bound AND entering variable row coefficient is POSITIVE
+		else if( s1.nonbasic_values(0, entering_var_index) == 0 &&
+				 s1.basic(row, entering_var_index) > 0 )
 		{
-			// ( UPPER bound of basic row - current value of row ) 
+			// UPPER bound of basic row - current value of row  
 			t = s1.basic_upper(row, 0) - s1.basic_values(row, 0);
 		}
-
+		// CASE 3: Entering variable is on LOWER bound AND entering variable row coefficient is NEGATIVE
+		if( s1.nonbasic_values(0, entering_var_index) == 0 &&
+			s1.basic(row, entering_var_index) < 0 )
+		{
+			// LOWER bound of basic row - current value of row
+			t = s1.basic_lower(row, 0) - s1.basic_values(row, 0);
+		}
+		// CASE 4: Entering variable is on UPPER bound AND entering variable row coefficient is NEGATIVE
+		if( s1.nonbasic_values(0, entering_var_index) == 1 &&
+			s1.basic(row, entering_var_index) < 0 )
+		{
+			// LOWER bound of basic row - current value of row 
+			t = s1.basic_lower(row, 0) - s1.basic_values(row, 0);
+		}
+		else
+		{
+			throw; //this shouldn't happen
+		}
+		
 		// Divide by coefficient of current row
 		t = t /  s1.basic(row, entering_var_index);
 		
