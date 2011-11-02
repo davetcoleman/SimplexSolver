@@ -23,6 +23,8 @@ struct dictionary
 	mat basic_upper; // col of upper bounds for basic vars
 	mat basic_vars; // tracks the names of the variables as they move with simplex
 	mat basic_values; // caches the value of each row, mostly just for printing
+
+	double objvalue;
 };
 
 // Read a problem from file

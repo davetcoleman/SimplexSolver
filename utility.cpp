@@ -204,7 +204,7 @@ void printDictionary(dictionary s1)
     {
       cout << tabber(s1.nonbasic(0,col)) << " \t";
     }
-    cout << endl;
+    cout << " =" << s1.objvalue << endl;
 
     cout << "-----------------------------------------------------------------------------------" << endl;
 

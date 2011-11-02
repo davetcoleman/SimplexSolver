@@ -24,6 +24,8 @@ using namespace std;
 // Global Vars:
 //----------------------------------------------------------
 bool VERBOSE = false;
+const int UPPER = 1;
+const int LOWER = 0;
 
 //----------------------------------------------------------
 // Main Function
@@ -34,10 +36,10 @@ int main(int argc, char** argv)
     cout << "LP Solver for General Simplex Problems" << endl;
     cout << "by Dave Coleman" << endl;
     cout << "-------------------------------------" << endl << endl;
-	/*
+	
 	// Solve problem 1 -------------------------------------------------------------
-	VERBOSE = true;
-    dictionary s1 = readProblem("chapter_example.txt");
+	VERBOSE = false;
+    dictionary s1 = readProblem("tests/example1.txt");
 	dictionary result1 = solveLP(s1);
 
 	// Create the answer
@@ -51,11 +53,11 @@ int main(int argc, char** argv)
 		return 1;
 
 	cout << endl << endl << endl << endl << "Test 2" << endl << endl << endl;
-	*/
+	
 	// Solve problem 2 -------------------------------------------------------------
 	VERBOSE = true;
 	
-    dictionary s2 = readProblem("example1.txt");
+    dictionary s2 = readProblem("tests/example2.txt");
 	dictionary result2 = solveLP(s2);
 
 	// Create the answer
@@ -67,9 +69,6 @@ int main(int argc, char** argv)
 
 	if( ! dictionaryIsEqual(result2, answer2) )
 		return 1;	
-
-	
-
 
 
 	
@@ -227,8 +226,8 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 {
 	// decide which constraint bounds it the most ( to the lowest value)
 	// in other words, find t < a where a is the smallest
-
-	double coeff = 0, other_coeff_total = 0, t = 0;
+	double t = 0;
+	int t_bound = -1;
 	
 	// store the constraint that limits the obj val the most
 	double smallest_const = numeric_limits<double>::infinity();
@@ -239,47 +238,63 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 	for(int row = 0; row < int(s1.basic.n_rows); ++row)
 	{
 		// Decide what constraint is active and lowest -------------------		
+
+		cout << "ROW " << row << " NONBASIC BOUNDED ON " << s1.nonbasic_values(0, entering_var_index)
+			 << " COEFF " << s1.basic(row, entering_var_index) << endl;
 		
 		// CASE 1: Entering variable is on UPPER bound AND entering variable row coefficient is POSITIVE
-		if( s1.nonbasic_values(0, entering_var_index) == 1 &&
+		if( s1.nonbasic_values(0, entering_var_index) == UPPER &&
 			s1.basic(row, entering_var_index) > 0)
 		{
 			// LOWER bound of basic row - current value of row
-			t = s1.basic_lower(row, 0) - s1.basic_values(row, 0);
+			t = s1.basic_values(row, 0) - s1.basic_lower(row, 0);
+			t_bound = 0; // lower bound
+			cout << "CASE 1" << endl;
 		}
    		// CASE 2: Entering variable is on LOWER bound AND entering variable row coefficient is POSITIVE
-		else if( s1.nonbasic_values(0, entering_var_index) == 0 &&
+		else if( s1.nonbasic_values(0, entering_var_index) == LOWER &&
 				 s1.basic(row, entering_var_index) > 0 )
 		{
 			// UPPER bound of basic row - current value of row  
 			t = s1.basic_upper(row, 0) - s1.basic_values(row, 0);
+			t_bound = 1; // upper bound			
+			cout << "CASE 2" << endl;			
 		}
 		// CASE 3: Entering variable is on LOWER bound AND entering variable row coefficient is NEGATIVE
-		if( s1.nonbasic_values(0, entering_var_index) == 0 &&
+		else if( s1.nonbasic_values(0, entering_var_index) == LOWER &&
 			s1.basic(row, entering_var_index) < 0 )
 		{
 			// LOWER bound of basic row - current value of row
-			t = s1.basic_lower(row, 0) - s1.basic_values(row, 0);
+			t = s1.basic_lower(row, 0) - s1.basic_values(row, 0);	
+			t_bound = 0; // lower bound		
+			cout << "CASE 3" << endl;			
 		}
 		// CASE 4: Entering variable is on UPPER bound AND entering variable row coefficient is NEGATIVE
-		if( s1.nonbasic_values(0, entering_var_index) == 1 &&
+		else if( s1.nonbasic_values(0, entering_var_index) == UPPER &&
 			s1.basic(row, entering_var_index) < 0 )
 		{
-			// LOWER bound of basic row - current value of row 
-			t = s1.basic_lower(row, 0) - s1.basic_values(row, 0);
+			// UPPER bound of basic row - current value of row 
+			t = s1.basic_values(row, 0) - s1.basic_upper(row, 0);
+			t_bound = 1; // upper bound						
+			cout << "CASE 4" << endl;			
+		}
+		// CASE 5: entering variable row coefficient is zero
+		else if( s1.basic(row, entering_var_index) == 0)
+		{
+			// Not eligible to leave
+			cout << "CASE 5" << endl;
+			continue; // move to next row
 		}
 		else
-		{
+   		{
+			cout << "No case found!" << endl;
 			throw; //this shouldn't happen
 		}
 		
 		// Divide by coefficient of current row
 		t = t /  s1.basic(row, entering_var_index);
 		
-		//TODO: what if zero?
-
-
-		cout << "t value is " << t << " for row " << row << endl;
+		cout << endl << "Min Contraint: t <= " << t << " on row " << row << endl << endl;
 		
 		// now decide if this is the smallest value
 		if( t < smallest_const )
@@ -287,15 +302,33 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 			smallest_const = t;
 			smallest_const_index = row;
 
-			// Choose which constraint is active in the leaving variable by matching
-			// t to one of the basic bounds
-			if( t == s1.basic_lower(row, 0) )
+			// The constraint is the same one used to calculate t
+			// Except check to make sure said bound is not inifinity TODO: is this right?
+			if( t_bound == UPPER ) 
 			{
-				smallest_const_bound = 0;			// bound = 0 if lower, 1 if upper
+				if( is_finite(s1.basic_upper(row, 0)) ) // check if upper bound is inifinite
+				{
+					smallest_const_bound = 1; // upper
+				}
+				else
+				{
+					smallest_const_bound = 0; // lower
+					cout << "inf trying to leave";
+					throw;
+				}
 			}
-			else if (t == s1.basic_upper(row, 0) )
+			else // lower bound
 			{
-				smallest_const_bound = 1; // upper
+				if( is_finite(s1.basic_lower(row, 0)) ) // check if lower bound is inifinite
+				{
+					smallest_const_bound = 0; // use lower bound
+				}
+				else
+				{
+					smallest_const_bound = 1; //upper
+					cout << "inf trying to leave";
+					throw;					
+				}				
 			}
 
 			cout << "smallest const = " << t << " index " << smallest_const_index
@@ -339,7 +372,7 @@ int getEnteringVar(dictionary s1)
 	for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
 	{
 		// 1) Check if coefficeint is positive and at lower bound
-		if(s1.nonbasic(0, col) > 0 && s1.nonbasic_values(0, col) == 0)
+		if(s1.nonbasic(0, col) > 0 && s1.nonbasic_values(0, col) == LOWER)
 		{
 			// is candidate to leave
 			if(s1.nonbasic(0, col) > largest_coef)
@@ -350,7 +383,7 @@ int getEnteringVar(dictionary s1)
 			}
 		}
 		// 2) Check if coefficient is negative and at upper bound
-		else if(s1.nonbasic(0, col) < 0 && s1.nonbasic_values(0, col) == 1)
+		else if(s1.nonbasic(0, col) < 0 && s1.nonbasic_values(0, col) == UPPER)
 		{
 			// is candidate to leave
 			if(s1.nonbasic(0, col) > largest_coef)
@@ -362,37 +395,6 @@ int getEnteringVar(dictionary s1)
 		}
 	}
 
-
-	// OLD METHOD:
-	// Does the same thing as isOptimal, except it checks all the vars and picks the best
-	// one to be the entering variable
-
-	// Chooses the variable that will produce the largest increase in the obj function
-	// but also checks that said variable is not at its upper bound
-
-	/*	double largest_coef = 0; 
-	double largest_coef = -1*numeric_limits<double>::infinity(); // keep track of the largest found coefficient
-	int largest_coef_index = -1; // init with a not found flag
-
-	cout << "Looking for largest coeff" << endl << largest_coef << endl;
-	
-	for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
-	{
-		// check if this constraint is at its upper bound. if so, skip,
-		// because we can't increase it any further
-		if( s1.nonbasic_values(0, col) != 1 ) // var is not on upper bound
-		{
-			// check if this is largest coefficient
-			if( s1.nonbasic(0, col) > largest_coef ) // yes, its the largest
-			{
-				largest_coef = s1.nonbasic(0, col);
-				largest_coef_index = col;
-			}
-		}
-	}
-	*/
-
-	
 	// Check if no entering variable found. This should not happen
 	if(largest_coef == -1*numeric_limits<double>::infinity())
 	{
@@ -418,14 +420,18 @@ bool isOptimal(dictionary s1)
 	for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
 	{
 		// 1) Check if coefficeint is negative and at lower bound
-		if(s1.nonbasic(0, col) < 0 && s1.nonbasic_values(0, col) == 0)
+		if(s1.nonbasic(0, col) < 0 && s1.nonbasic_values(0, col) == LOWER)
 		{
 			// this var is as optimal as it can get
 		}
 		// 2) Check if coefficient is positive and at upper bound
-		else if(s1.nonbasic(0, col) > 0 && s1.nonbasic_values(0, col) == 1)
+		else if(s1.nonbasic(0, col) > 0 && s1.nonbasic_values(0, col) == UPPER)
 		{
 			// this var is as optimal as it can get
+		}
+		else if(s1.nonbasic(0, col) == 0)
+		{
+			// 0 means optimal
 		}
 		else
 		{
@@ -479,6 +485,15 @@ dictionary calculateSlack(dictionary s1)
 		}
 		s1.basic_values(row, 0) = value;
 	}
+
+	value = 0; // reuse this var
+	
+	// Calculate the objective value
+	for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
+	{
+		value = value + s1.nonbasic(0, col) * getNonbasicVal(s1, col);
+	}
+	s1.objvalue = value;
 	
 	return s1;
 }
@@ -571,7 +586,7 @@ dictionary pivot(dictionary s1)
 	// Step 3: Change the constraints the non-basic variables are resting on ----------
 
 	// If the leaving_var_bound was set to lower bound, move the nonbasic var bound to lower
-	if(leaving_var_bound == 0) // lower
+	if(leaving_var_bound == LOWER) // lower
 	{
 		s1.nonbasic_values(0, entering_var_index) = 0; // switch to lower
 	}
@@ -602,7 +617,7 @@ dictionary pivot(dictionary s1)
 	}
 
 	// Step 5: Update slack variable amount/row solutions
-	s1 = calculateSlack(s1);	
+	s1 = calculateSlack(s1); 
 
 	return s1;
 }
@@ -638,8 +653,7 @@ dictionary initialize(dictionary s1)
 			    value <= s2.basic_upper(row, 0) ) )
 		{
 			// constraint not satisfied. so now we add e variable
-			cout << endl << "OUT OF BOUNDS CONSTRAINT ON ROW " << row << endl;
-			cout << "Constraint Value = " << value << endl;
+			cout << endl << "OUT OF BOUNDS CONSTRAINT ON ROW " << row << " WITH VALUE " << value << endl << endl;
 
 			// Add column at right of matrix with all zeros
 			s2.basic.insert_cols(s2.basic.n_cols, 1);
@@ -695,19 +709,136 @@ dictionary initialize(dictionary s1)
 
 	s2 = simplex(s2);
 
+	// We should now have an optimal intial dictionary
+	// Now we check that the original dictionary is feasible
+	// Check that aux LP obj val is 0
+	if( s2.objvalue != 0)
+	{
+		// Orig LP Problem is not feasible
+		cout << "Original dictionary is not feasible!" << endl;
+		throw;
+	}
+	
+	// Next we remove the nonbasic independent variables
 
+	// Calculate the auxillary id threshold:
+	int aux_id_min = s2.n + s2.m;
+	
+	for(int col = 0; col < int(s2.nonbasic.n_cols); ++col)
+	{
+		// Check if var id is within aux range
+		if( s2.nonbasic_vars(0, col) >= aux_id_min )
+		{
+			// this is an aux variable
+
+			// remove column from all matricies/vectors
+			cout << "removing column " << col << endl;
+			s2.nonbasic.shed_col(col);
+			s2.nonbasic_values.shed_col(col);
+			s2.nonbasic_lower.shed_col(col);
+			s2.nonbasic_upper.shed_col(col);
+			s2.nonbasic_vars.shed_col(col);
+			s2.basic.shed_col(col);
+
+		}
+	}
+	
+	// if any of aux vars are basic, it cannot be removed
+	// instead we set both its bounds to 0
+	for(int row =0; row < int(s2.basic.n_rows); ++row)
+	{
+		// Check if var id is within aux range
+		if( s2.basic_vars(row, 0) >= aux_id_min )
+		{
+			// this is an aux variable
+
+			// set bounds to 0
+			s2.basic_lower(row, 0) = 0;
+			s2.basic_upper(row, 0) = 0;			
+		}
+	}
+	
+	// re-add original objective function
+	s1 = combineObjFunc(s1, s2);
+	
+	cout << "After Converting Dictionary Back To Original LP" << endl;
+	printDictionary(s1);
+	
+	// Update all the row totals and obj value
+	s1 = calculateSlack(s1);
+	
 	cout << endl << "AT BOTTOM OF INITILIZATION" << endl;
-
 	
-	//orig: printDictionary(s1, 89);
-	
-
-    cout << endl;
-    throw;
+	printDictionary(s1);
+   
+	//    cout << endl;
+    //throw;
 
 	// TODO: convert s2 back to s1
 	
 	return s1;
+}
+//-------------------------------------------------------------------------------------------
+// Combine original objective function to auxilary dictionary
+//-------------------------------------------------------------------------------------------
+dictionary combineObjFunc(dictionary s1, dictionary s2)
+{
+	// Move obj function from s1 into s2. Return s2
+	bool haveAdded;
+	
+	// First reset s2 obj function to zero
+	s2.nonbasic.fill(0);
+
+	// Now loop through every col of old obj function and add components to new obj function
+	for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
+	{
+		haveAdded = false;
+		
+		// check if this variable is a nonbasic var in the aux dictionary
+		// if it is, simply add it
+		for( int col2 = 0; col2 < int(s2.nonbasic.n_cols); ++col2)
+		{
+			if( s1.nonbasic_vars(0, col) == s2.nonbasic_vars(0, col2) )
+			{
+				// this nonbasic variable appears non basic in both dictionarys, direct add
+				s2.nonbasic(0, col2) = s2.nonbasic(0, col2) + s1.nonbasic(0, col);
+				haveAdded = true;
+				break;
+			}
+		}
+
+		if( !haveAdded )
+		{
+			// this nonbasic variable does not appear in both dictionaries
+			// multiply instead the coefficient of original obj function times the basic row
+			// add then add this basic row to the new objective function
+
+			// First, find the basic row that has the same variable id. This is so stupid complicated.
+			for( int row = 0; row < int(s2.basic.n_rows); ++row)
+			{
+				if( s2.basic_vars(row, 0) == s1.nonbasic_vars(0, col) )
+				{
+					// the original obj function var has been matched to a nonbasic row in the aux LP
+
+					mat tempRow = s2.basic.row(row);
+					tempRow.print("TEMP ROW");
+
+					// Multiply this row by the original obj variable's coefficient
+					tempRow = tempRow * s1.nonbasic_vars(0, col);
+
+					// Add this temp row to the new objective function
+					s2.nonbasic = s2.nonbasic + tempRow;
+
+					s2.nonbasic.print("NONBASIC");
+				}
+
+			}
+			
+		}
+		
+	}
+	
+	return s2;
 }
 //-------------------------------------------------------------------------------------------
 // Compare 2 Dictionaries

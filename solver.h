@@ -36,3 +36,6 @@ dictionary pivot(dictionary s1);
 
 // Dualize if initialization needed
 dictionary initialize(dictionary s1);
+
+// Combine original objective function to auxilary dictionary
+dictionary combineObjFunc(dictionary s1, dictionary s2);
