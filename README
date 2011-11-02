@@ -41,3 +41,11 @@ To ensure termination I used the least subscript/Bland's rule after the program 
 I did not have time to do any benchmarking, but did setup automated testing as I worked on the algorithm. There are a TON of potential optimizations that could be made to this program. But I have spent a huge amount of time on this project already...
 
 There are bound to be some bugs that crop up with certain LP problems because I have not had enough time to test a large set of problems. But I did make some sweet visuals.
+
+
+TODO
+Implement flip option, competes with pivot
+Better degeneracy check - if basic vars are resting on bounds
+Better Bland's rule checker
+Pass dictionary by reference
+More testing of examples
