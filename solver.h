@@ -1,6 +1,9 @@
 #include "utility.h"
 #include <limits>
 
+// Unit Testing?
+void runTests();
+
 // Compare two matricies
 bool dictionaryIsEqual(dictionary d1, dictionary d);
 
@@ -27,9 +30,6 @@ bool isFeasible(dictionary s1);
 
 // Calculates the slack variables, ie the value of each row
 dictionary calculateSlack(dictionary s1);
-
-// Return the bound that the nonbasic variable is currently resting on, or "active'
-double getNonbasicVal(dictionary s1, int index);
 
 // Do the actual pivot
 dictionary pivot(dictionary s1);

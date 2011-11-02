@@ -229,6 +229,55 @@ void printDictionary(dictionary s1)
 
 }
 //-------------------------------------------------------------------------------------------
+// Print the x values at end of program
+//-------------------------------------------------------------------------------------------
+void outputResults(dictionary s1)
+{
+	cout << endl << "Final Results:" << endl;
+
+	mat result(1, s1.n); // store the x values only
+	int nonbasic_id_max = s1.n; // only store ids that are less than this number
+
+	// Output nonbasic values
+    for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
+	{
+		if( s1.nonbasic_vars(0, col) < nonbasic_id_max )
+		{
+			result(0, s1.nonbasic_vars(0, col)) = getNonbasicVal(s1, col);
+		}
+		//cout << resolveVarName(s1, s1.nonbasic_vars(0, col)) << " = " << getNonbasicVal(s1, col) << endl;
+	}
+
+   	// Output basic values
+	for(int row = 0; row < int(s1.basic.n_rows); ++row)
+	{
+		if( s1.basic_vars(row, 0) < nonbasic_id_max )
+		{
+			result(0, s1.basic_vars(row, 0)) = s1.basic_values(row, 0);
+		}
+		//cout << resolveVarName(s1, s1.basic_vars(row, 0)) << " = " << s1.basic_values(row, 0) << endl;
+	}
+
+	// Output all the data
+    for(int col = 0; col < int(result.n_cols); ++col)
+	{
+		cout << resolveVarName(s1, col) << " = " << result(0, col) << endl;
+	}
+
+	cout << endl << "\033[1;31m" << "Objective Value: " << s1.objvalue << "\033[0m" << endl << endl;
+			
+}
+//-------------------------------------------------------------------------------------------
+// Return the bound that the nonbasic variable is currently resting on, or "active'
+//-------------------------------------------------------------------------------------------
+double getNonbasicVal(dictionary s1, int index)
+{
+	if( s1.nonbasic_values(0, index) ) // value is on lower bound
+		return s1.nonbasic_upper(0, index);
+	else
+		return s1.nonbasic_lower(0, index);
+}
+//-------------------------------------------------------------------------------------------
 // Convert a variable name index into a name string
 // For example: 0 = x1, 1 = x2, 2 = w1, 3 = w2, 4 = w3
 //

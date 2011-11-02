@@ -36,7 +36,34 @@ int main(int argc, char** argv)
     cout << "LP Solver for General Simplex Problems" << endl;
     cout << "by Dave Coleman" << endl;
     cout << "-------------------------------------" << endl << endl;
+
+	// Check if a parameter is being passed in - this is specifying what file to run
+	if(argc > 1)
+	{
+		const char* filename = argv[1];
+		cout << "Opening file: " << filename << endl << endl;
+  	
+		VERBOSE = true;
+		dictionary s1 = readProblem(filename);
+		
+		s1 = solveLP(s1);
+		
+		outputResults(s1);
+	}
+	else // no filename was specified, just run all tests
+	{
+		cout << endl << "No filename passed as parameter to program. Running all tests" << endl;
+		runTests();
+	}
 	
+	cout << endl;
+	return EXIT_SUCCESS;
+}
+//----------------------------------------------------------
+// Unit Testing, kinda
+//----------------------------------------------------------
+void runTests()
+{
 	// Solve problem 1 -------------------------------------------------------------
 	VERBOSE = false;
     dictionary s1 = readProblem("tests/example1.txt");
@@ -50,30 +77,28 @@ int main(int argc, char** argv)
 	answer1.basic << 0.5 << 0.5 << endr << -1.5 << 0.5 << endr << -0.5 << 0.5 << endr;
 
 	if( ! dictionaryIsEqual(result1, answer1) )
-		return 1;
+		throw;
 
 	cout << endl << endl << endl << endl << "Test 2" << endl << endl << endl;
 	
 	// Solve problem 2 -------------------------------------------------------------
 	VERBOSE = true;
 	
-    dictionary s2 = readProblem("tests/example2.txt");
-	dictionary result2 = solveLP(s2);
+    dictionary s2 = readProblem("tests/example3.txt");
+	s2 = solveLP(s2);
 
+	outputResults(s2);
+	
 	// Create the answer
-	dictionary answer2;
+	//dictionary answer2;
 
 	// Chapter Example Answer:
-	answer2.nonbasic << 1.51614 << -1.30661;
-	answer2.basic << 0.5 << 0.5 << endr << -1.5 << 0.5 << endr << -0.5 << 0.5 << endr;
+	//answer2.nonbasic << 1.51614 << -1.30661;
+	//answer2.basic << 0.5 << 0.5 << endr << -1.5 << 0.5 << endr << -0.5 << 0.5 << endr;
 
-	if( ! dictionaryIsEqual(result2, answer2) )
-		return 1;	
+	//if( ! dictionaryIsEqual(result2, answer2) )
+	//	return 1;	
 
-
-	
-	cout << endl;
-	return EXIT_SUCCESS;
 }
 //-------------------------------------------------------------------------------------------
 // Solve Linear Program
@@ -98,7 +123,7 @@ dictionary solveLP(dictionary s1)
 	else
 	{
 		if(VERBOSE)
-			cout << "Not optimal" << endl;
+			cout << "Not optimal." << endl;
 	}
 
 	if(isFeasible(s1))
@@ -109,7 +134,7 @@ dictionary solveLP(dictionary s1)
 	else
 	{
 		if(VERBOSE)
-			cout << "Not feasible. Beginning initialization phase." << endl;
+			cout << "Not feasible." << endl << "Beginning initialization phase." << endl;
 
 		s1 = initialize(s1);
 
@@ -197,9 +222,7 @@ dictionary setup(dictionary s1)
 	}
 
 	// Setup the basic var values cache
-	cout << "here " << endl;
 	s1.basic_values.set_size(s1.basic.n_rows, 1);
-	cout << "done " << endl;
 	
 	// Setup the variable tracking 
 	// Nonbasic Vars:       0 to (n-1)
@@ -239,8 +262,8 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 	{
 		// Decide what constraint is active and lowest -------------------		
 
-		cout << "ROW " << row << " NONBASIC BOUNDED ON " << s1.nonbasic_values(0, entering_var_index)
-			 << " COEFF " << s1.basic(row, entering_var_index) << endl;
+		//cout << "ROW " << row << " NONBASIC BOUNDED ON " << s1.nonbasic_values(0, entering_var_index)
+		//	 << " COEFF " << s1.basic(row, entering_var_index) << endl;
 		
 		// CASE 1: Entering variable is on UPPER bound AND entering variable row coefficient is POSITIVE
 		if( s1.nonbasic_values(0, entering_var_index) == UPPER &&
@@ -249,7 +272,7 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 			// LOWER bound of basic row - current value of row
 			t = s1.basic_values(row, 0) - s1.basic_lower(row, 0);
 			t_bound = 0; // lower bound
-			cout << "CASE 1" << endl;
+			//cout << "CASE 1" << endl;
 		}
    		// CASE 2: Entering variable is on LOWER bound AND entering variable row coefficient is POSITIVE
 		else if( s1.nonbasic_values(0, entering_var_index) == LOWER &&
@@ -258,7 +281,7 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 			// UPPER bound of basic row - current value of row  
 			t = s1.basic_upper(row, 0) - s1.basic_values(row, 0);
 			t_bound = 1; // upper bound			
-			cout << "CASE 2" << endl;			
+			//cout << "CASE 2" << endl;			
 		}
 		// CASE 3: Entering variable is on LOWER bound AND entering variable row coefficient is NEGATIVE
 		else if( s1.nonbasic_values(0, entering_var_index) == LOWER &&
@@ -267,7 +290,7 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 			// LOWER bound of basic row - current value of row
 			t = s1.basic_lower(row, 0) - s1.basic_values(row, 0);	
 			t_bound = 0; // lower bound		
-			cout << "CASE 3" << endl;			
+			//cout << "CASE 3" << endl;			
 		}
 		// CASE 4: Entering variable is on UPPER bound AND entering variable row coefficient is NEGATIVE
 		else if( s1.nonbasic_values(0, entering_var_index) == UPPER &&
@@ -276,13 +299,13 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 			// UPPER bound of basic row - current value of row 
 			t = s1.basic_values(row, 0) - s1.basic_upper(row, 0);
 			t_bound = 1; // upper bound						
-			cout << "CASE 4" << endl;			
+			//cout << "CASE 4" << endl;			
 		}
 		// CASE 5: entering variable row coefficient is zero
 		else if( s1.basic(row, entering_var_index) == 0)
 		{
 			// Not eligible to leave
-			cout << "CASE 5" << endl;
+			//cout << "CASE 5" << endl;
 			continue; // move to next row
 		}
 		else
@@ -294,7 +317,7 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 		// Divide by coefficient of current row
 		t = t /  s1.basic(row, entering_var_index);
 		
-		cout << endl << "Min Contraint: t <= " << t << " on row " << row << endl << endl;
+		//cout << endl << "Min Contraint: t <= " << t << " on row " << row << endl << endl;
 		
 		// now decide if this is the smallest value
 		if( t < smallest_const )
@@ -304,6 +327,9 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 
 			// The constraint is the same one used to calculate t
 			// Except check to make sure said bound is not inifinity TODO: is this right?
+			smallest_const_bound = t_bound;
+
+			/*
 			if( t_bound == UPPER ) 
 			{
 				if( is_finite(s1.basic_upper(row, 0)) ) // check if upper bound is inifinite
@@ -329,10 +355,10 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 					cout << "inf trying to leave";
 					throw;					
 				}				
-			}
+				}*/
 
-			cout << "smallest const = " << t << " index " << smallest_const_index
-				 << " bounded at " << smallest_const_bound << endl;
+			//cout << "smallest const = " << t << " index " << smallest_const_index
+			//	 << " bounded at " << smallest_const_bound << endl;
 		}
 
 	}
@@ -517,16 +543,6 @@ bool isFeasible(dictionary s1)
 	return true;
 }
 //-------------------------------------------------------------------------------------------
-// Return the bound that the nonbasic variable is currently resting on, or "active'
-//-------------------------------------------------------------------------------------------
-double getNonbasicVal(dictionary s1, int index)
-{
-	if( s1.nonbasic_values(0, index) ) // value is on lower bound
-		return s1.nonbasic_upper(0, index);
-	else
-		return s1.nonbasic_lower(0, index);
-}
-//-------------------------------------------------------------------------------------------
 // Do the actual pivot
 //-------------------------------------------------------------------------------------------
 dictionary pivot(dictionary s1)
@@ -653,7 +669,8 @@ dictionary initialize(dictionary s1)
 			    value <= s2.basic_upper(row, 0) ) )
 		{
 			// constraint not satisfied. so now we add e variable
-			cout << endl << "OUT OF BOUNDS CONSTRAINT ON ROW " << row << " WITH VALUE " << value << endl << endl;
+			cout << endl << "Out of bounds constraint found on row " << row
+				 << " with value " << value << "." << endl << endl;
 
 			// Add column at right of matrix with all zeros
 			s2.basic.insert_cols(s2.basic.n_cols, 1);

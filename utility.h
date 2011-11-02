@@ -39,6 +39,12 @@ double convertCell(std::string &s);
 // Output to screen a formatted simplex step
 void printDictionary(dictionary s1);
 
+// Print the x values at end of program
+void outputResults(dictionary s1);
+
+// Return the bound that the nonbasic variable is currently resting on, or "active'
+double getNonbasicVal(dictionary s1, int index);
+	
 // Convert a variable name index into a name string
 string resolveVarName(dictionary s1, int var_index);
 

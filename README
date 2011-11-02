@@ -1,8 +1,46 @@
-General Simplex Solver
+---------------------------------------------------
+LP Solver for General Simplex Problems
 A very simple implementation for a class project
-Written in C++
+Witten in C++
 
-Dave Coleman - davetcoleman.com
+CSCI Linear Programming - Programming Assignment 1
+
+Dave Coleman | david.t.coleman@colorado.edu
+davetcoleman.com
 10/20/2011
+---------------------------------------------------
 
-This optimizer is not very complete but simply a implementation for my own practice.
+This optimizer is neither complete nor optimized.
+
+
+****INSTALL NOTES****
+
+Tested on Ubuntu 11.04
+
+>>cd into directory
+>>make
+>>./solver FILENAME
+
+or, to run tests in the /tests folder just run:
+>>./solver
+
+If this fails to run you probably need the Armadillo library:
+>>sudo apt-get install libarmadillo0
+
+
+
+****PROJECT WRITE UP****
+
+TEAM MEMBERS
+Just Dave Coleman
+
+IMPLEMENTATION
+I have implemented a general form simplex solver for linear programs. Problems are initialized using an intilization phase as described in Sankaranarayanan's General Initialization Phase notes. The primal simplex method for general LP problems is implmented as described in Chapter 9 of Vanderbei's Linear Programming book.
+
+The program is written in C++ but uses the Armadillo matricies libraries for more dynamic and optimized matrix operations.
+
+To ensure termination I used the least subscript/Bland's rule after the program hits the 50th step.
+
+I did not have time to do any benchmarking, but did setup automated testing as I worked on the algorithm.
+
+There are bound to be some bugs that crop up with certain LP problems because I have not had enough time to test a large set of problems. But I did make some sweet visuals.
