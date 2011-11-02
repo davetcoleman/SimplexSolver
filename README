@@ -10,9 +10,6 @@ davetcoleman.com
 10/20/2011
 ---------------------------------------------------
 
-This optimizer is neither complete nor optimized.
-
-
 ****INSTALL NOTES****
 
 Tested on Ubuntu 11.04
@@ -41,6 +38,6 @@ The program is written in C++ but uses the Armadillo matricies libraries for mor
 
 To ensure termination I used the least subscript/Bland's rule after the program hits the 50th step.
 
-I did not have time to do any benchmarking, but did setup automated testing as I worked on the algorithm.
+I did not have time to do any benchmarking, but did setup automated testing as I worked on the algorithm. There are a TON of potential optimizations that could be made to this program. But I have spent a huge amount of time on this project already...
 
 There are bound to be some bugs that crop up with certain LP problems because I have not had enough time to test a large set of problems. But I did make some sweet visuals.

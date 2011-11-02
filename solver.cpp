@@ -63,11 +63,14 @@ int main(int argc, char** argv)
 // Unit Testing, kinda
 //----------------------------------------------------------
 void runTests()
-{
+{	
 	// Solve problem 1 -------------------------------------------------------------
-	VERBOSE = false;
+	VERBOSE = false;	
+	cout << "*********************************************************************************" << endl;	
+	cout << endl << "Running Example 1 - from Chapter 9 of Vanderbei" << endl;
+	
     dictionary s1 = readProblem("tests/example1.txt");
-	dictionary result1 = solveLP(s1);
+	s1 = solveLP(s1);
 
 	// Create the answer
 	dictionary answer1;
@@ -76,29 +79,47 @@ void runTests()
 	answer1.nonbasic << 1.5 << 0.5;
 	answer1.basic << 0.5 << 0.5 << endr << -1.5 << 0.5 << endr << -0.5 << 0.5 << endr;
 
-	if( ! dictionaryIsEqual(result1, answer1) )
+	if( ! dictionaryIsEqual(s1, answer1) )
 		throw;
 
-	cout << endl << endl << endl << endl << "Test 2" << endl << endl << endl;
+	outputResults(s1);	
+
+
+
+
 	
 	// Solve problem 2 -------------------------------------------------------------
-	VERBOSE = true;
+	VERBOSE = false;
+	cout << "*********************************************************************************" << endl;		
+	cout << endl << "Running Example 2 - from Prof General Intialization PDF" << endl;	
 	
-    dictionary s2 = readProblem("tests/example3.txt");
+    dictionary s2 = readProblem("tests/example2.txt");
 	s2 = solveLP(s2);
 
 	outputResults(s2);
+
+
 	
-	// Create the answer
-	//dictionary answer2;
 
-	// Chapter Example Answer:
-	//answer2.nonbasic << 1.51614 << -1.30661;
-	//answer2.basic << 0.5 << 0.5 << endr << -1.5 << 0.5 << endr << -0.5 << 0.5 << endr;
+	// Solve problem 3 -------------------------------------------------------------
+	VERBOSE = false;
+	cout << "*********************************************************************************" << endl;		
+	cout << endl << "Running Example 3 - from Prof's Matlab Code, Example 1" << endl;	
+	
+    dictionary s3 = readProblem("tests/example3.txt");
+	s3 = solveLP(s3);
 
-	//if( ! dictionaryIsEqual(result2, answer2) )
-	//	return 1;	
+	outputResults(s3);	
+	
+	// Check obj value
+	if(fabs(s3.objvalue - 10.6667) > .01)
+	{
+		cout << "Wrong answer";
+		throw;
+	}
+	
 
+	cout << endl << "Tests complete" << endl;
 }
 //-------------------------------------------------------------------------------------------
 // Solve Linear Program
@@ -144,6 +165,13 @@ dictionary solveLP(dictionary s1)
 			cout << "Still not feasible. Fail." << endl;
 			throw;
 		}
+
+		// Check if optiaml, then we are done
+		if(isOptimal(s1))
+		{
+			cout << "This LP problem is optimal!" << endl;
+			return s1;
+		}		
 	}
 
 	// Run simplex and return the result
@@ -154,11 +182,12 @@ dictionary simplex(dictionary s1)
 {
 	// Start Simplex -------------------------------------------------
 	int step = 1; // keep track of how many pivots we do
+	bool useBland = false;
 	
 	while(true)
 	{
 		// Pivot
-		s1 = pivot(s1);
+		s1 = pivot(s1, useBland);
 
 		// Check if dictionary is optimal
 		if(isOptimal(s1))
@@ -167,8 +196,13 @@ dictionary simplex(dictionary s1)
 			printDictionary(s1);
 			break;
 		}
+		// Ensure termination by running Bland's rule after 50th step
+		else if(step == 50)
+		{
+			useBland = true;
+		}
 		// Check for cycling or just bugs
-		else if(step > 4)
+		else if(step > 200)
 		{
 			cout << "Possible cycling occuring, ending" << endl;
 			printDictionary(s1);
@@ -238,14 +272,15 @@ dictionary setup(dictionary s1)
 		s1.basic_vars(row, 0) = row + int(s1.nonbasic.n_cols); // index the rows
 
 	// Calculate the slack variables
-	s1 = calculateSlack(s1);
+	s1 = calculateSlack(s1, false);
 	
 	return s1;
 }
 //-------------------------------------------------------------------------------------------
 // Get the row index of the corresponding leaving vaiable
 //-------------------------------------------------------------------------------------------
-void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index, int& leaving_var_bound)
+void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index,
+				   int& leaving_var_bound, bool useBland)
 {
 	// decide which constraint bounds it the most ( to the lowest value)
 	// in other words, find t < a where a is the smallest
@@ -318,9 +353,9 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 		t = t /  s1.basic(row, entering_var_index);
 		
 		//cout << endl << "Min Contraint: t <= " << t << " on row " << row << endl << endl;
-		
-		// now decide if this is the smallest value
-		if( t < smallest_const )
+
+		// now decide if this is the smallest value, or just the first one if bland is in effect
+		if( t < smallest_const || useBland )
 		{
 			smallest_const = t;
 			smallest_const_index = row;
@@ -329,7 +364,13 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 			// Except check to make sure said bound is not inifinity TODO: is this right?
 			smallest_const_bound = t_bound;
 
-			/*
+			// Stop looking for other potential entering vars if bland's rule is in effect
+			if(useBland)
+			{
+				break;
+			}
+
+			/* I DO NOT THINK THIS IS NEEDED:
 			if( t_bound == UPPER ) 
 			{
 				if( is_finite(s1.basic_upper(row, 0)) ) // check if upper bound is inifinite
@@ -379,7 +420,7 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 //-------------------------------------------------------------------------------------------
 // Get the row index of the next entering variable
 //-------------------------------------------------------------------------------------------
-int getEnteringVar(dictionary s1)
+int getEnteringVar(dictionary s1, bool useBland)
 {
 	// NEW METHOD:
 	// c*x is a candidate for leaving if:
@@ -388,13 +429,10 @@ int getEnteringVar(dictionary s1)
 	//  2) x is on its upper bound AND c < 0
 	//
 	// Choose the candidate that increases z the most
-	// TODO: is this last part true?
 
 	double largest_coef = -1*numeric_limits<double>::infinity(); // keep track of the largest found coefficient
 	int largest_coef_index = -1; // init with a not found flag	
 
-	// TODO: check is optimal to 0 condition
-	
 	for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
 	{
 		// 1) Check if coefficeint is positive and at lower bound
@@ -405,7 +443,12 @@ int getEnteringVar(dictionary s1)
 			{
 				largest_coef = s1.nonbasic(0, col);
 				largest_coef_index = col;
-				break; // this is Bland's rule
+
+				// Stop looking for other potential entering vars if bland's rule is in effect
+				if(useBland)
+				{
+					break;
+				}				
 			}
 		}
 		// 2) Check if coefficient is negative and at upper bound
@@ -416,7 +459,12 @@ int getEnteringVar(dictionary s1)
 			{
 				largest_coef = s1.nonbasic(0, col);
 				largest_coef_index = col;
-				break; // this is Bland's rule				
+
+				// Stop looking for other potential entering vars if bland's rule is in effect
+				if(useBland)
+				{
+					break;
+				}								
 			}			
 		}
 	}
@@ -492,8 +540,9 @@ bool isOptimal(dictionary s1)
 }
 //-------------------------------------------------------------------------------------------
 // Calculates current value of each row
+// checkObjValue is a flag that should only be false if we are doing auxillary problem
 //-------------------------------------------------------------------------------------------
-dictionary calculateSlack(dictionary s1)
+dictionary calculateSlack(dictionary s1, bool checkObjValue)
 {
 	//Calculate values of slack variables, Wn...
 	
@@ -519,6 +568,23 @@ dictionary calculateSlack(dictionary s1)
 	{
 		value = value + s1.nonbasic(0, col) * getNonbasicVal(s1, col);
 	}
+
+	// Check if degenerate
+	if(VERBOSE && s1.objvalue == value)
+	{
+		cout << "The objective value did not change. Degeneracy." << endl << endl;
+	}
+
+	// Check for error
+	if( s1.objvalue > value && checkObjValue)
+	{
+		cout << endl << "Old ObjVal = " << s1.objvalue << endl;
+		cout << "New ObjVal = " << value << endl;
+		cout << "OBJECTIVE VALUE DECREASED. SOMETHING WENT WRONG" << endl;
+		throw;
+	}
+
+	//Update value
 	s1.objvalue = value;
 	
 	return s1;
@@ -545,19 +611,18 @@ bool isFeasible(dictionary s1)
 //-------------------------------------------------------------------------------------------
 // Do the actual pivot
 //-------------------------------------------------------------------------------------------
-dictionary pivot(dictionary s1)
+dictionary pivot(dictionary s1, bool useBland)	
 {
-	
 	// Step 0: Find Entering and leaving variables ---------------------------------------
 	
     // Choose the entering variable
-	int entering_var_index = getEnteringVar(s1);
+	int entering_var_index = getEnteringVar(s1, useBland);
 	if(VERBOSE)
 		cout << "Entering variable: " << resolveVarName(s1, s1.nonbasic_vars[entering_var_index]) << endl;
 
 	// Choose the leaving variable
 	int leaving_var_index, leaving_var_bound;	
-	getLeavingVar(s1, entering_var_index, leaving_var_index, leaving_var_bound);
+	getLeavingVar(s1, entering_var_index, leaving_var_index, leaving_var_bound, useBland);
 	if(VERBOSE)
 		cout << "Leaving variable: " << resolveVarName(s1, s1.basic_vars[leaving_var_index]) << endl << endl;
 	
@@ -633,7 +698,7 @@ dictionary pivot(dictionary s1)
 	}
 
 	// Step 5: Update slack variable amount/row solutions
-	s1 = calculateSlack(s1); 
+	s1 = calculateSlack(s1, true); 
 
 	return s1;
 }
@@ -669,8 +734,9 @@ dictionary initialize(dictionary s1)
 			    value <= s2.basic_upper(row, 0) ) )
 		{
 			// constraint not satisfied. so now we add e variable
-			cout << endl << "Out of bounds constraint found on row " << row
-				 << " with value " << value << "." << endl << endl;
+			if(VERBOSE)
+				cout << endl << "Out of bounds constraint found on row " << row
+					 << " with value " << value << "." << endl << endl;
 
 			// Add column at right of matrix with all zeros
 			s2.basic.insert_cols(s2.basic.n_cols, 1);
@@ -718,12 +784,15 @@ dictionary initialize(dictionary s1)
 	}
 
 	// Update slack variable amount/row solutions
-	s2 = calculateSlack(s2);		
+	s2 = calculateSlack(s2, false);		
 
 	// We now have a dictionary ready for the initialization phase:
-    cout << "New Auxillary Problem " << endl;		
-	printDictionary(s2);
-
+	if(VERBOSE)
+	{
+		cout << "New Auxillary Problem " << endl;		
+		printDictionary(s2);
+	}
+	
 	s2 = simplex(s2);
 
 	// We should now have an optimal intial dictionary
@@ -749,7 +818,7 @@ dictionary initialize(dictionary s1)
 			// this is an aux variable
 
 			// remove column from all matricies/vectors
-			cout << "removing column " << col << endl;
+			cout << endl << "Removing column " << col << "." << endl << endl;
 			s2.nonbasic.shed_col(col);
 			s2.nonbasic_values.shed_col(col);
 			s2.nonbasic_lower.shed_col(col);
@@ -777,21 +846,17 @@ dictionary initialize(dictionary s1)
 	
 	// re-add original objective function
 	s1 = combineObjFunc(s1, s2);
-	
-	cout << "After Converting Dictionary Back To Original LP" << endl;
-	printDictionary(s1);
-	
-	// Update all the row totals and obj value
-	s1 = calculateSlack(s1);
-	
-	cout << endl << "AT BOTTOM OF INITILIZATION" << endl;
-	
-	printDictionary(s1);
-   
-	//    cout << endl;
-    //throw;
 
-	// TODO: convert s2 back to s1
+	// Update all the row totals and obj value
+	s1 = calculateSlack(s1, false);
+	
+	if(VERBOSE)
+	{
+		cout << "After Converting Dictionary Back To Original LP" << endl;
+		printDictionary(s1);
+
+		cout << endl << "Done with initilization." << endl;		
+	}
 	
 	return s1;
 }
@@ -838,7 +903,6 @@ dictionary combineObjFunc(dictionary s1, dictionary s2)
 					// the original obj function var has been matched to a nonbasic row in the aux LP
 
 					mat tempRow = s2.basic.row(row);
-					tempRow.print("TEMP ROW");
 
 					// Multiply this row by the original obj variable's coefficient
 					tempRow = tempRow * s1.nonbasic_vars(0, col);
@@ -846,7 +910,6 @@ dictionary combineObjFunc(dictionary s1, dictionary s2)
 					// Add this temp row to the new objective function
 					s2.nonbasic = s2.nonbasic + tempRow;
 
-					s2.nonbasic.print("NONBASIC");
 				}
 
 			}
