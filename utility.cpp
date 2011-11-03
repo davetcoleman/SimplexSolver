@@ -356,3 +356,14 @@ static inline std::string &rtrim(std::string &s) {
   s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
   return s;
 }
+//-------------------------------------------------------------------------------------------
+// For benchmarking
+//-------------------------------------------------------------------------------------------
+double get_time()
+{
+	struct timeval t;
+	struct timezone tzp;
+	gettimeofday(&t, &tzp);
+	return t.tv_sec + t.tv_usec*1e-6;
+}
+

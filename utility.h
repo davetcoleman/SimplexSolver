@@ -1,5 +1,7 @@
 #include <armadillo>
 #include <iomanip>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 using namespace arma;
 using namespace std;
@@ -50,3 +52,6 @@ string resolveVarName(dictionary s1, int var_index);
 
 // format positive numbers less than 10
 string tabber(double num);
+
+// For benchmarking
+double get_time();

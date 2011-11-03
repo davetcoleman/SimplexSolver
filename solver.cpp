@@ -17,6 +17,7 @@
 #include "solver.h"
 #include "assert.h"
 
+
 using namespace arma;
 using namespace std;
 
@@ -65,6 +66,9 @@ int main(int argc, char** argv)
 //----------------------------------------------------------
 void runTests()
 {
+	double total_time = 0, start, end; // for benchmarking
+	int num_tests = 100000;
+
 	dictionary s1;
 	
 	// Solve problem 1 -------------------------------------------------------------
@@ -76,10 +80,21 @@ void runTests()
 	cout << endl << "Running Example 1 - from Chapter 9 of Vanderbei" << endl << "\033[0m";
 	
     s1 = readProblem("tests/example1.txt");
-	s1 = solveLP(s1);
 
+	// Benchmark the solver:
+	start = get_time();
+	for(int i = 0; i < num_tests; ++i)
+	{
+		s1 = solveLP(s1);
+		checkObjective(s1, 3); // Check obj value
+	}
+	end = get_time();
+	
+	// Show results:	
+	cout << "Ran " << num_tests << " in " << (end - start) << " seconds. " << endl;
+	total_time += end - start;
 	outputResults(s1);	
-	checkObjective(s1, 3); // Check obj value		
+
 	
 
 	
@@ -89,10 +104,24 @@ void runTests()
 	cout << endl << "Running Example 2 - from Prof General Intialization PDF" << endl << "\033[0m";
 	
     s1 = readProblem("tests/example2.txt");
-	s1 = solveLP(s1);
 
+	// Benchmark the solver:
+	start = get_time();
+	for(int i = 0; i < num_tests; ++i)
+	{
+		s1 = solveLP(s1);
+		checkObjective(s1, 118); // Check obj value
+	}
+	end = get_time();
+	
+	// Show results:	
+	cout << "Ran " << num_tests << " in " << (end - start) << " seconds. " << endl;
+	total_time += end - start;
 	outputResults(s1);
-	checkObjective(s1, 118); // Check obj value		
+
+
+
+	
 	
 
 	// Solve problem 3 -------------------------------------------------------------
@@ -101,10 +130,22 @@ void runTests()
 	cout << endl << "Running Example 3 - from Prof's Matlab Code, Example 1" << endl << "\033[0m";
 
     s1 = readProblem("tests/example3.txt");
-	s1 = solveLP(s1);
-
+	// Benchmark the solver:
+	start = get_time();
+	for(int i = 0; i < num_tests; ++i)
+	{
+		s1 = solveLP(s1);
+		checkObjective(s1, 10.6667); // Check obj value
+	}
+	end = get_time();
+	
+	// Show results:	
+	cout << "Ran " << num_tests << " in " << (end - start) << " seconds. " << endl;
+	total_time += end - start;
 	outputResults(s1);
-	checkObjective(s1, 10.6667); // Check obj value		
+
+
+
 
 	
 	// Solve problem 4 -------------------------------------------------------------
@@ -113,10 +154,24 @@ void runTests()
 	cout << endl << "Running Example 4 - from Prof's Notes Lecture 8, Slide 25" << endl << "\033[0m";
 
     s1 = readProblem("tests/example4.txt");
-	s1 = solveLP(s1);
 
+	// Benchmark the solver:
+	start = get_time();
+	for(int i = 0; i < num_tests; ++i)
+	{
+		s1 = solveLP(s1);
+		checkObjective(s1, 3); // Check obj value
+	}
+	end = get_time();
+	
+	// Show results:	
+	cout << "Ran " << num_tests << " in " << (end - start) << " seconds. " << endl;
+	total_time += end - start;
 	outputResults(s1);
-	checkObjective(s1, 3); // Check obj value	
+
+
+
+	
 
 	// Solve problem 5 -------------------------------------------------------------
 	VERBOSE = false;
@@ -124,13 +179,24 @@ void runTests()
 	cout << endl << "Running Example 5 - from Chvatal Chapter 3 page 39" << endl << "\033[0m";
 	
     s1 = readProblem("tests/example5.txt");
-	s1 = solveLP(s1);
 
-	outputResults(s1);
-	checkObjective(s1, 4); // Check obj value
+
+	// Benchmark the solver:
+	start = get_time();
+	for(int i = 0; i < num_tests; ++i)
+	{
+		s1 = solveLP(s1);
+		checkObjective(s1, 4); // Check obj value
+	}
+	end = get_time();
 	
-
-	cout << endl << "Tests complete" << endl;
+	// Show results:	
+	cout << "Ran " << num_tests << " in " << (end - start) << " seconds. " << endl;
+	total_time += end - start;
+	outputResults(s1);
+	
+	
+	cout << endl << (5*num_tests) << " tests completed in " << total_time << " seconds." << endl;
 }
 //-------------------------------------------------------------------------------------------
 // Check that the dictionary result is correct

@@ -1,6 +1,6 @@
 ---------------------------------------------------
 LP Solver for General Simplex Problems
-A very simple implementation for a class project
+A simple implementation for a class project
 Witten in C++
 
 CSCI Linear Programming - Programming Assignment 1
@@ -12,13 +12,13 @@ davetcoleman.com
 
 ****INSTALL NOTES****
 
-Tested on Ubuntu 11.04
+Tested on Ubuntu 11.04 and Mac OSX
 
 >>cd into directory
 >>make
 >>./solver FILENAME
 
-or, to run tests in the /tests folder just run:
+or, to run the 5 benchmarking tests in the /tests folder just run:
 >>./solver
 
 If this fails to run you probably need the Armadillo library:
@@ -29,23 +29,34 @@ If this fails to run you probably need the Armadillo library:
 ****PROJECT WRITE UP****
 
 TEAM MEMBERS
-Just Dave Coleman
+Just Dave
 
 IMPLEMENTATION
 I have implemented a general form simplex solver for linear programs. Problems are initialized using an intilization phase as described in Sankaranarayanan's General Initialization Phase notes. The primal simplex method for general LP problems is implmented as described in Chapter 9 of Vanderbei's Linear Programming book.
 
 The program is written in C++ but uses the Armadillo matricies libraries for more dynamic and optimized matrix operations.
 
-To ensure termination I used the least subscript/Bland's rule after the program hits the 50th step.
+To ensure termination I used the least subscript/Bland's rule after the program hits the 50th step. The program aborts if it runs for over 1000 pivots as a debugging feature.
 
-I did not have time to do any benchmarking, but did setup automated testing as I worked on the algorithm. There are a TON of potential optimizations that could be made to this program. But I have spent a huge amount of time on this project already...
+5 examples where testing on this solver:
+ - Example from Chapter 9 of Vanderbei's Linear Programming Book
+ - Example from Sankaranarayanan's General Intialization PDF notes
+ - Example from Sankaranarayanan's Matlab code, #1
+ - Example from Sankaranarayanan's Lecture Notes 8, Slide 25
+ - Example from Chvatal Chapter 3, page 39
 
-There are bound to be some bugs that crop up with certain LP problems because I have not had enough time to test a large set of problems. But I did make some sweet visuals.
+The objective functions were solved using glpk solver for comparison.
+
+For benchmarking each of the 5 tests were run 100,000 times and the total time was added up. The program was then optimized to lower the average running time.
+
+BENCHMARKING 500,000 SOLUTIONS
+
+2.97919	     Solver's initial run time after it was finished
+
+
 
 
 TODO
-Implement flip option, competes with pivot
 Better degeneracy check - if basic vars are resting on bounds
 Better Bland's rule checker
 Pass dictionary by reference
-More testing of examples
