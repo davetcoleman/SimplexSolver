@@ -1,45 +1,43 @@
 #include "utility.h"
 #include <limits>
 
-// Unit Testing?
+// Benchmarking
 void runTests();
 
-// Compare two matricies
-bool dictionaryIsEqual(dictionary d1, dictionary d);
-
-void checkObjective(dictionary s1, double answer);
+// Check if objective function is correct
+void checkObjective(dictionary& d1, double answer);
 	
 // Run an occurance of linear solver
-dictionary solveLP(dictionary s1);
+void solveLP(dictionary& d1);
 
 // Run simplex
-dictionary simplex(dictionary s1);
+void simplex(dictionary& d1);
 
 // Setup remainder of dictionary after it is loaded from file
-dictionary setup(dictionary s1);
+void setup(dictionary& d1);
 
 // Get the row index of the corresponding leaving vaiable
-void getLeavingVar(dictionary s1, int entering_var_index,
+void getLeavingVar(dictionary& d1, int entering_var_index,
 				   int& leaving_var_index, int& leaving_var_bound,
 				   bool useBland, bool& doFlip);
 	
 // Get the row index of the next entering variable
-void getEnteringVar(dictionary s1, bool useBland, int& entering_var_index);
+void getEnteringVar(dictionary& d1, bool useBland, int& entering_var_index);
 	 
 // Check if problem is optimal
-bool isOptimal(dictionary s1);
+bool isOptimal(dictionary& d1);
 
 // Check if dictionaty is feasible
-bool isFeasible(dictionary s1);
+bool isFeasible(dictionary& d1);
 
 // Calculates the slack variables, ie the value of each row
-dictionary calculateSlack(dictionary s1, bool checkObjValue);
+void calculateSlack(dictionary& d1, bool checkObjValue);
 
 // Do the actual pivot
-dictionary pivot(dictionary s1, bool useBland);
+void pivot(dictionary& d1, bool useBland);
 
 // Dualize if initialization needed
-dictionary initialize(dictionary s1);
+void initialize(dictionary& d1);
 
 // Combine original objective function to auxilary dictionary
-dictionary combineObjFunc(dictionary s1, dictionary s2);
+void combineObjFunc(dictionary& d1, dictionary& s2);

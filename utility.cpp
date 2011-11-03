@@ -152,7 +152,7 @@ double convertCell(std::string &s) {
 //-------------------------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------------------------
-void printDictionary(dictionary s1)
+void printDictionary(dictionary& s1)
 {
     cout << "-----------------------------------------------------------------------------------" << endl;
 	
@@ -233,7 +233,7 @@ void printDictionary(dictionary s1)
 //-------------------------------------------------------------------------------------------
 // Print the x values at end of program
 //-------------------------------------------------------------------------------------------
-void outputResults(dictionary s1)
+void outputResults(dictionary& s1)
 {
 	cout << endl << "Final Results:" << endl;
 
@@ -272,7 +272,7 @@ void outputResults(dictionary s1)
 //-------------------------------------------------------------------------------------------
 // Return the bound that the nonbasic variable is currently resting on, or "active'
 //-------------------------------------------------------------------------------------------
-double getNonbasicVal(dictionary s1, int index)
+double getNonbasicVal(dictionary& s1, int index)
 {
 	if( s1.nonbasic_values(0, index) ) // value is on lower bound
 		return s1.nonbasic_upper(0, index);
@@ -287,7 +287,7 @@ double getNonbasicVal(dictionary s1, int index)
 // Basic Vars:          n to (n+m-1)
 // Auxillary Vars e:    (n+m) to (n+m+n_es-1)
 //-------------------------------------------------------------------------------------------
-string resolveVarName(dictionary s1, int var_index)
+string resolveVarName(dictionary& s1, int var_index)
 {
     ostringstream strs;
    

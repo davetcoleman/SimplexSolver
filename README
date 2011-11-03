@@ -52,11 +52,8 @@ For benchmarking each of the 5 tests were run 100,000 times and the total time w
 BENCHMARKING 500,000 SOLUTIONS
 
 2.97919	     Solver's initial run time after it was finished
+0.124841     Changed matricies to reference variables
+
+95.81% speed up, not bad. I'm tired...
 
 
-
-
-TODO
-Better degeneracy check - if basic vars are resting on bounds
-Better Bland's rule checker
-Pass dictionary by reference
