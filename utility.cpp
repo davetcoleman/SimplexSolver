@@ -316,6 +316,11 @@ string tabber(double num)
 {
     ostringstream strs;
 
+	if(fabs(num) < 0.000000001)
+	{
+		// assume zero
+		return "0  ";
+	}
     if(num >= 0 && num < 10)
     {
 		strs << num << "  ";

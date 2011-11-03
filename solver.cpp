@@ -353,7 +353,6 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 			// UPPER bound of basic row - current value of row 
 			t = s1.basic_values(row, 0) - s1.basic_upper(row, 0);
 			t_bound = 1; // upper bound						
-			//cout << "CASE 4" << endl;			
 		}
 		// CASE 5: entering variable row coefficient is zero
 		else if( s1.basic(row, entering_var_index) == 0)
@@ -407,7 +406,7 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 
 		if( !is_finite(flip_amount) )
 		{
-			cout << "Flip ignored because is inifinity = " << flip_amount << endl;
+			//cout << "Flip ignored because is inifinity = " << flip_amount << endl;
 		}
 		else
 		{
@@ -424,6 +423,7 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 			else
 			{
 				cout << "Flip lost to " << smallest_const << endl;
+
 			}
 		}
 	}
@@ -776,7 +776,7 @@ dictionary initialize(dictionary s1)
 		{
 			// constraint not satisfied. so now we add e variable
 			if(VERBOSE)
-				cout << endl << "Out of bounds constraint found on row " << row
+				cout << "Out of bounds constraint found on row " << row
 					 << " with value " << value << "." << endl << endl;
 
 			// Add column at right of matrix with all zeros
@@ -791,7 +791,7 @@ dictionary initialize(dictionary s1)
 
 			// Set new objective to negative of auxillary variable
 			s2.nonbasic(0, s2.nonbasic.n_cols - 1) = -1;
-			
+
 			// Always set lower bound of ex to 0
 			s2.nonbasic_lower(0, s2.nonbasic_lower.n_cols - 1) = 0;
 
@@ -826,7 +826,7 @@ dictionary initialize(dictionary s1)
 
 	// Update slack variable amount/row solutions
 	s2 = calculateSlack(s2, false);		
-
+	
 	// We now have a dictionary ready for the initialization phase:
 	if(VERBOSE)
 	{
@@ -860,7 +860,7 @@ dictionary initialize(dictionary s1)
 
 			// remove column from all matricies/vectors
 			if(VERBOSE)
-				cout << endl << "Removing column " << col << "." << endl << endl;
+				cout << "Removing column " << col << "." << endl << endl;
 			
 			s2.nonbasic.shed_col(col);
 			s2.nonbasic_values.shed_col(col);
