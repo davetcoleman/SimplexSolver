@@ -53,6 +53,7 @@ int main(int argc, char** argv)
 	else // no filename was specified, just run all tests
 	{
 		cout << endl << "No filename passed as parameter to program. Running all tests" << endl;
+		cout << endl << endl;
 		runTests();
 	}
 	
@@ -63,78 +64,87 @@ int main(int argc, char** argv)
 // Unit Testing, kinda
 //----------------------------------------------------------
 void runTests()
-{	
-	// Solve problem 1 -------------------------------------------------------------
-	VERBOSE = false;	
-	cout << "*********************************************************************************" << endl;	
-	cout << endl << "Running Example 1 - from Chapter 9 of Vanderbei" << endl;
+{
+	dictionary s1;
 	
-    dictionary s1 = readProblem("tests/example1.txt");
+	// Solve problem 1 -------------------------------------------------------------
+	VERBOSE = false;
+
+	
+
+	cout << "\033[1;31m" << "*********************************************************************************";
+	cout << endl << "Running Example 1 - from Chapter 9 of Vanderbei" << endl << "\033[0m";
+	
+    s1 = readProblem("tests/example1.txt");
 	s1 = solveLP(s1);
 
-	// Create the answer based on chapter example:
-	dictionary answer1;
-	answer1.nonbasic << 1.5 << 0.5;
-	answer1.basic << 0.5 << 0.5 << endr << -1.5 << 0.5 << endr << -0.5 << 0.5 << endr;
-
-	if( ! dictionaryIsEqual(s1, answer1) )
-		throw;
-
 	outputResults(s1);	
-
+	checkObjective(s1, 3); // Check obj value		
 	
 
 	
 	// Solve problem 2 -------------------------------------------------------------
 	VERBOSE = false;
-	cout << "*********************************************************************************" << endl;		
-	cout << endl << "Running Example 2 - from Prof General Intialization PDF" << endl;	
+	cout << "\033[1;31m" << "*********************************************************************************";
+	cout << endl << "Running Example 2 - from Prof General Intialization PDF" << endl << "\033[0m";
 	
     s1 = readProblem("tests/example2.txt");
 	s1 = solveLP(s1);
 
 	outputResults(s1);
-
-
+	checkObjective(s1, 118); // Check obj value		
 	
 
 	// Solve problem 3 -------------------------------------------------------------
 	VERBOSE = false;
-	cout << "*********************************************************************************" << endl;		
-	cout << endl << "Running Example 3 - from Prof's Matlab Code, Example 1" << endl;	
+	cout << "\033[1;31m" << "*********************************************************************************";
+	cout << endl << "Running Example 3 - from Prof's Matlab Code, Example 1" << endl << "\033[0m";
 
     s1 = readProblem("tests/example3.txt");
 	s1 = solveLP(s1);
 
 	outputResults(s1);
+	checkObjective(s1, 10.6667); // Check obj value		
+
 	
-	// Check obj value
-	if(fabs(s1.objvalue - 10.6667) > .01)
-	{
-		cout << "Wrong answer";
-		throw;
-	}
-
-
 	// Solve problem 4 -------------------------------------------------------------
 	VERBOSE = false;
-	cout << "*********************************************************************************" << endl;		
-	cout << endl << "Running Example 4 - from Prof's Notes Lecture 8, Slide 25" << endl;	
+	cout << "\033[1;31m" << "*********************************************************************************";
+	cout << endl << "Running Example 4 - from Prof's Notes Lecture 8, Slide 25" << endl << "\033[0m";
 
     s1 = readProblem("tests/example4.txt");
 	s1 = solveLP(s1);
 
 	outputResults(s1);
+	checkObjective(s1, 3); // Check obj value	
+
+	// Solve problem 5 -------------------------------------------------------------
+	VERBOSE = false;
+	cout << "\033[1;31m" << "*********************************************************************************";
+	cout << endl << "Running Example 5 - from Chvatal Chapter 3 page 39" << endl << "\033[0m";
 	
-	// Check obj value
-	if(fabs(s1.objvalue - 3) > .01)
-	{
-		cout << "Wrong answer";
-		throw;
-	}	
+    s1 = readProblem("tests/example5.txt");
+	s1 = solveLP(s1);
+
+	outputResults(s1);
+	checkObjective(s1, 4); // Check obj value
 	
 
 	cout << endl << "Tests complete" << endl;
+}
+//-------------------------------------------------------------------------------------------
+// Check that the dictionary result is correct
+//-------------------------------------------------------------------------------------------
+void checkObjective(dictionary s1, double answer)
+{
+	// Check obj value
+	if(fabs(s1.objvalue - answer) > .001)
+	{
+		cout << endl << "Incorrect answer found!" << endl;
+		cout << "Solver Answer: " << s1.objvalue << endl;
+		cout << "Correct Answer: " << answer << endl;
+		throw;
+	}
 }
 //-------------------------------------------------------------------------------------------
 // Solve Linear Program
@@ -210,7 +220,8 @@ dictionary simplex(dictionary s1)
 		if(isOptimal(s1))
 		{
 			cout << "Optimal Dictionary" << endl;
-			printDictionary(s1);
+			if(VERBOSE)
+				printDictionary(s1);
 			break;
 		}
 		// Ensure termination by running Bland's rule after 50th step
@@ -219,10 +230,11 @@ dictionary simplex(dictionary s1)
 			useBland = true;
 		}
 		// Check for cycling or just bugs
-		else if(step > 200)
+		else if(step > 1000)
 		{
-			cout << "Possible cycling occuring, ending" << endl;
-			printDictionary(s1);
+			cout << "Possible cycling occuring, its been 1000 iterations. Ending" << endl;
+			if(VERBOSE)
+				printDictionary(s1);
 			break;
 		}
 		else if(VERBOSE)		// Output the dictionary
@@ -410,19 +422,19 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 		}
 		else
 		{
-			cout << "Flip is possible, amount = " << flip_amount << "." << endl;
+			if(VERBOSE)
+				cout << "Flip is possible, amount = " << flip_amount << "." << endl;
 
 			if( flip_amount < smallest_const )
 			{
-				cout << "Flip is least bound on increase of entering variable" << endl;
-				cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
-				cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
-				cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;				
+				if(VERBOSE)				
+					cout << "Flipping. Is least bound on increase of entering variable" << endl << endl;
 				doFlip = true;
 			}
 			else
 			{
-				cout << "Flip lost to " << smallest_const << endl;
+				if(VERBOSE)				
+					cout << "Flip lost to " << smallest_const << endl;
 
 			}
 		}
@@ -465,9 +477,9 @@ void getEnteringVar(dictionary s1, bool useBland, int& entering_var_index)
 		if(s1.nonbasic(0, col) > 0 && s1.nonbasic_values(0, col) == LOWER)
 		{
 			// is candidate to leave
-			if(s1.nonbasic(0, col) > largest_coef)
+			if(fabs(s1.nonbasic(0, col)) > largest_coef)
 			{
-				largest_coef = s1.nonbasic(0, col);
+				largest_coef = fabs(s1.nonbasic(0, col));
 				largest_coef_index = col;
 
 				// Stop looking for other potential entering vars if bland's rule is in effect
@@ -480,10 +492,11 @@ void getEnteringVar(dictionary s1, bool useBland, int& entering_var_index)
 		// 2) Check if coefficient is negative and at upper bound
 		else if(s1.nonbasic(0, col) < 0 && s1.nonbasic_values(0, col) == UPPER)
 		{
+			
 			// is candidate to leave
-			if(s1.nonbasic(0, col) > largest_coef)
+			if(fabs(s1.nonbasic(0, col)) > largest_coef)
 			{
-				largest_coef = s1.nonbasic(0, col);
+				largest_coef = fabs(s1.nonbasic(0, col));
 				largest_coef_index = col;
 
 				// Stop looking for other potential entering vars if bland's rule is in effect
@@ -842,7 +855,7 @@ dictionary initialize(dictionary s1)
 	if( s2.objvalue != 0)
 	{
 		// Orig LP Problem is not feasible
-		cout << "Original dictionary is not feasible!" << endl;
+		cout << "New dictionary is not feasible!" << endl;
 		throw;
 	}
 	
@@ -909,7 +922,10 @@ dictionary initialize(dictionary s1)
 dictionary combineObjFunc(dictionary s1, dictionary s2)
 {
 	// Move obj function from s1 into s2. Return s2
-	bool haveAdded;
+	if(VERBOSE)
+		cout << "COMBING OBJECTIVE FUNCTIONS " << endl << endl << endl << endl;
+	
+	bool haveAdded; // keep track of each var status
 	
 	// First reset s2 obj function to zero
 	s2.nonbasic.fill(0);
@@ -918,16 +934,18 @@ dictionary combineObjFunc(dictionary s1, dictionary s2)
 	for(int col = 0; col < int(s1.nonbasic.n_cols); ++col)
 	{
 		haveAdded = false;
-		
+
 		// check if this variable is a nonbasic var in the aux dictionary
 		// if it is, simply add it
 		for( int col2 = 0; col2 < int(s2.nonbasic.n_cols); ++col2)
 		{
 			if( s1.nonbasic_vars(0, col) == s2.nonbasic_vars(0, col2) )
 			{
+				
 				// this nonbasic variable appears non basic in both dictionarys, direct add
 				s2.nonbasic(0, col2) = s2.nonbasic(0, col2) + s1.nonbasic(0, col);
 				haveAdded = true;
+
 				break;
 			}
 		}
@@ -948,7 +966,7 @@ dictionary combineObjFunc(dictionary s1, dictionary s2)
 					mat tempRow = s2.basic.row(row);
 
 					// Multiply this row by the original obj variable's coefficient
-					tempRow = tempRow * s1.nonbasic_vars(0, col);
+					tempRow = tempRow * s1.nonbasic(0, col);
 
 					// Add this temp row to the new objective function
 					s2.nonbasic = s2.nonbasic + tempRow;
@@ -958,7 +976,7 @@ dictionary combineObjFunc(dictionary s1, dictionary s2)
 			}
 			
 		}
-		
+
 	}
 	
 	return s2;

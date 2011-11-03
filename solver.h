@@ -7,6 +7,8 @@ void runTests();
 // Compare two matricies
 bool dictionaryIsEqual(dictionary d1, dictionary d);
 
+void checkObjective(dictionary s1, double answer);
+	
 // Run an occurance of linear solver
 dictionary solveLP(dictionary s1);
 
