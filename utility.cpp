@@ -171,7 +171,8 @@ void printDictionary(dictionary s1)
         // check if the nonbasic variable is currently on this bound
 		if(s1.nonbasic_values(0,col) == 0)
 		{
-			cout << "\033[1;31m"<< tabber(s1.nonbasic_lower(0,col)) << "\033[0m \t";
+			//cout << "\033[1;31m"<< tabber(s1.nonbasic_lower(0,col)) << "\033[0m \t";
+			cout << "["<< tabber(s1.nonbasic_lower(0,col)) << "] \t";			
 		}
 		else
 		{
@@ -187,7 +188,8 @@ void printDictionary(dictionary s1)
         // check if the nonbasic variable is currently on this bound
         if(s1.nonbasic_values(0,col) == 1)
 		{
-			cout << "\033[1;31m"<< tabber(s1.nonbasic_upper(0,col)) << "\033[0m \t";
+			//cout << "\033[1;31m"<< tabber(s1.nonbasic_upper(0,col)) << "\033[0m \t";
+			cout << "["<< tabber(s1.nonbasic_upper(0,col)) << "] \t";			
 		}
 		else
 		{
