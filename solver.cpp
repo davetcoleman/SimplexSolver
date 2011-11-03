@@ -72,10 +72,8 @@ void runTests()
     dictionary s1 = readProblem("tests/example1.txt");
 	s1 = solveLP(s1);
 
-	// Create the answer
+	// Create the answer based on chapter example:
 	dictionary answer1;
-
-	// Chapter Example Answer:
 	answer1.nonbasic << 1.5 << 0.5;
 	answer1.basic << 0.5 << 0.5 << endr << -1.5 << 0.5 << endr << -0.5 << 0.5 << endr;
 
@@ -84,8 +82,7 @@ void runTests()
 
 	outputResults(s1);	
 
-
-
+	
 
 	
 	// Solve problem 2 -------------------------------------------------------------
@@ -93,10 +90,10 @@ void runTests()
 	cout << "*********************************************************************************" << endl;		
 	cout << endl << "Running Example 2 - from Prof General Intialization PDF" << endl;	
 	
-    dictionary s2 = readProblem("tests/example2.txt");
-	s2 = solveLP(s2);
+    s1 = readProblem("tests/example2.txt");
+	s1 = solveLP(s1);
 
-	outputResults(s2);
+	outputResults(s1);
 
 
 	
@@ -105,18 +102,36 @@ void runTests()
 	VERBOSE = false;
 	cout << "*********************************************************************************" << endl;		
 	cout << endl << "Running Example 3 - from Prof's Matlab Code, Example 1" << endl;	
-	
-    dictionary s3 = readProblem("tests/example3.txt");
-	s3 = solveLP(s3);
 
-	outputResults(s3);	
+    s1 = readProblem("tests/example3.txt");
+	s1 = solveLP(s1);
+
+	outputResults(s1);
 	
 	// Check obj value
-	if(fabs(s3.objvalue - 10.6667) > .01)
+	if(fabs(s1.objvalue - 10.6667) > .01)
 	{
 		cout << "Wrong answer";
 		throw;
 	}
+
+
+	// Solve problem 4 -------------------------------------------------------------
+	VERBOSE = false;
+	cout << "*********************************************************************************" << endl;		
+	cout << endl << "Running Example 4 - from Prof's Notes Lecture 8, Slide 25" << endl;	
+
+    s1 = readProblem("tests/example4.txt");
+	s1 = solveLP(s1);
+
+	outputResults(s1);
+	
+	// Check obj value
+	if(fabs(s1.objvalue - 3) > .01)
+	{
+		cout << "Wrong answer";
+		throw;
+	}	
 	
 
 	cout << endl << "Tests complete" << endl;
@@ -138,7 +153,9 @@ dictionary solveLP(dictionary s1)
     // Check if its optimal
     if(isOptimal(s1))
 	{
-		cout << "This LP problem is optimal!" << endl;
+		if(VERBOSE)
+			cout << "This LP problem is optimal!" << endl;
+		
 		return s1;
 	}
 	else
@@ -150,7 +167,7 @@ dictionary solveLP(dictionary s1)
 	if(isFeasible(s1))
 	{
 		if(VERBOSE)
-			cout << "This LP problem is feasible" << endl;
+			cout << "This LP problem is feasible" << endl << endl;
 	}
 	else
 	{
@@ -280,12 +297,14 @@ dictionary setup(dictionary s1)
 // Get the row index of the corresponding leaving vaiable
 //-------------------------------------------------------------------------------------------
 void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index,
-				   int& leaving_var_bound, bool useBland)
+				   int& leaving_var_bound, bool useBland, bool& doFlip)
 {
 	// decide which constraint bounds it the most ( to the lowest value)
 	// in other words, find t < a where a is the smallest
 	double t = 0;
 	int t_bound = -1;
+	
+	doFlip = false; // by default do not flip the bound
 	
 	// store the constraint that limits the obj val the most
 	double smallest_const = numeric_limits<double>::infinity();
@@ -370,38 +389,43 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 				break;
 			}
 
-			/* I DO NOT THINK THIS IS NEEDED:
-			if( t_bound == UPPER ) 
-			{
-				if( is_finite(s1.basic_upper(row, 0)) ) // check if upper bound is inifinite
-				{
-					smallest_const_bound = 1; // upper
-				}
-				else
-				{
-					smallest_const_bound = 0; // lower
-					cout << "inf trying to leave";
-					throw;
-				}
-			}
-			else // lower bound
-			{
-				if( is_finite(s1.basic_lower(row, 0)) ) // check if lower bound is inifinite
-				{
-					smallest_const_bound = 0; // use lower bound
-				}
-				else
-				{
-					smallest_const_bound = 1; //upper
-					cout << "inf trying to leave";
-					throw;					
-				}				
-				}*/
-
 			//cout << "smallest const = " << t << " index " << smallest_const_index
 			//	 << " bounded at " << smallest_const_bound << endl;
 		}
 
+	}
+
+
+   	// Now check if a flip variable is possibly better
+	// 1. Check if coeff of nonbasic var is NEGATIVE and is on UPPER bound OR
+	// 2. Check if coeff of nonbasic var is POSITIVE and is on LOWER bound
+	if( ( s1.nonbasic(0, entering_var_index) < 0 && s1.nonbasic_values(0, entering_var_index) == UPPER ) ||
+     	( s1.nonbasic(0, entering_var_index) > 0 && s1.nonbasic_values(0, entering_var_index) == LOWER ) )
+	{
+		double flip_amount = s1.nonbasic_upper(0, entering_var_index)
+			- s1.nonbasic_lower(0, entering_var_index);
+
+		if( !is_finite(flip_amount) )
+		{
+			cout << "Flip ignored because is inifinity = " << flip_amount << endl;
+		}
+		else
+		{
+			cout << "Flip is possible, amount = " << flip_amount << "." << endl;
+
+			if( flip_amount < smallest_const )
+			{
+				cout << "Flip is least bound on increase of entering variable" << endl;
+				cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+				cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+				cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;				
+				doFlip = true;
+			}
+			else
+			{
+				cout << "Flip lost to " << smallest_const << endl;
+			}
+		}
 	}
 	
 	// check that a leaving variable was found
@@ -420,7 +444,7 @@ void getLeavingVar(dictionary s1, int entering_var_index, int& leaving_var_index
 //-------------------------------------------------------------------------------------------
 // Get the row index of the next entering variable
 //-------------------------------------------------------------------------------------------
-int getEnteringVar(dictionary s1, bool useBland)
+void getEnteringVar(dictionary s1, bool useBland, int& entering_var_index)
 {
 	// NEW METHOD:
 	// c*x is a candidate for leaving if:
@@ -429,6 +453,8 @@ int getEnteringVar(dictionary s1, bool useBland)
 	//  2) x is on its upper bound AND c < 0
 	//
 	// Choose the candidate that increases z the most
+	//
+	// Also look for flip variables
 
 	double largest_coef = -1*numeric_limits<double>::infinity(); // keep track of the largest found coefficient
 	int largest_coef_index = -1; // init with a not found flag	
@@ -476,7 +502,8 @@ int getEnteringVar(dictionary s1, bool useBland)
 		throw;
 	}
 	
-	return largest_coef_index;
+	// Return results by reference
+	entering_var_index = largest_coef_index;
 }
 //-------------------------------------------------------------------------------------------
 // Check if current general form is optimal
@@ -616,13 +643,27 @@ dictionary pivot(dictionary s1, bool useBland)
 	// Step 0: Find Entering and leaving variables ---------------------------------------
 	
     // Choose the entering variable
-	int entering_var_index = getEnteringVar(s1, useBland);
+	int entering_var_index;
+	
+	getEnteringVar(s1, useBland, entering_var_index);
 	if(VERBOSE)
 		cout << "Entering variable: " << resolveVarName(s1, s1.nonbasic_vars[entering_var_index]) << endl;
 
 	// Choose the leaving variable
-	int leaving_var_index, leaving_var_bound;	
-	getLeavingVar(s1, entering_var_index, leaving_var_index, leaving_var_bound, useBland);
+	int leaving_var_index, leaving_var_bound;
+	bool doFlip = false; // passed as reference variable and updated if pivot is not best step
+	getLeavingVar(s1, entering_var_index, leaving_var_index, leaving_var_bound, useBland, doFlip);
+
+	// Check if a flip is better than the leaving variable
+	if( doFlip )
+	{
+		// Forget the pivot, we are flipping the bound of the entering variable and calling it a day
+		s1.nonbasic_values(0, entering_var_index) = !s1.nonbasic_values(0, entering_var_index);
+   		s1 = calculateSlack(s1, true);
+		
+		return s1;
+	}
+	
 	if(VERBOSE)
 		cout << "Leaving variable: " << resolveVarName(s1, s1.basic_vars[leaving_var_index]) << endl << endl;
 	
@@ -818,7 +859,9 @@ dictionary initialize(dictionary s1)
 			// this is an aux variable
 
 			// remove column from all matricies/vectors
-			cout << endl << "Removing column " << col << "." << endl << endl;
+			if(VERBOSE)
+				cout << endl << "Removing column " << col << "." << endl << endl;
+			
 			s2.nonbasic.shed_col(col);
 			s2.nonbasic_values.shed_col(col);
 			s2.nonbasic_lower.shed_col(col);
