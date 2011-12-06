@@ -3,7 +3,7 @@ LP Solver for General Simplex Problems
 * Author:  Dave Coleman <davetcoleman@gmail.com>
 * License: GNU General Public License, version 3 (GPL-3.0)
 * Date: 10/20/2011
-=======
+
 A very simple implementation for a class project in C++
 
 
@@ -11,7 +11,7 @@ INSTALL NOTES
 ---------
 
 Tested on Ubuntu 11.04 and Mac OSX
-
+       
        cd into directory
        make
        ./solver FILENAME
