@@ -1,37 +1,34 @@
----------------------------------------------------
 LP Solver for General Simplex Problems
-A simple implementation for a class project
-Witten in C++
+==========
+* Author:  Dave Coleman <davetcoleman@gmail.com>
+* License: GNU General Public License, version 3 (GPL-3.0)
+* Date: 10/20/2011
+=======
+A very simple implementation for a class project in C++
 
-CSCI Linear Programming - Programming Assignment 1
 
-Dave Coleman | david.t.coleman@colorado.edu
-davetcoleman.com
-10/20/2011
----------------------------------------------------
-
-****INSTALL NOTES****
+INSTALL NOTES
+---------
 
 Tested on Ubuntu 11.04 and Mac OSX
 
->>cd into directory
->>make
->>./solver FILENAME
+       cd into directory
+       make
+       ./solver FILENAME
+
 
 or, to run the 5 benchmarking tests in the /tests folder just run:
->>./solver
+    
+	./solver
 
 If this fails to run you probably need the Armadillo library:
->>sudo apt-get install libarmadillo0
 
+   	sudo apt-get install libarmadillo0
 
-
-****PROJECT WRITE UP****
-
-TEAM MEMBERS
-Just Dave
 
 IMPLEMENTATION
+---------
+
 I have implemented a general form simplex solver for linear programs. Problems are initialized using an intilization phase as described in Sankaranarayanan's General Initialization Phase notes. The primal simplex method for general LP problems is implmented as described in Chapter 9 of Vanderbei's Linear Programming book.
 
 The program is written in C++ but uses the Armadillo matricies libraries for more dynamic and optimized matrix operations.
